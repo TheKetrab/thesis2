@@ -1,0 +1,1158 @@
+\documentclass[declaration,shortabstract,mgr]{iithesis}
+\usepackage[utf8]{inputenc}
+\usepackage{multicol}
+\usepackage{hyperref}
+\usepackage[export]{adjustbox}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{hyperref}
+\usepackage{courier}
+\usepackage{listings}
+\usepackage{lipsum}
+\usepackage{courier}
+\usepackage{xcolor}
+\usepackage{subcaption}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    %backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=1,
+    escapechar=\%
+}
+
+\lstset{linewidth=.9\textwidth}
+\lstset{style=mystyle}
+
+\usepackage[page,toc,titletoc,title]{appendix}
+\usepackage{tocloft}
+
+%%%%% DANE DO STRONY TYTUŁOWEJ
+% Niezaleznie od jezyka pracy wybranego w opcjach klasy, tytul i streszczenie
+% pracy nalezy podac zarowno w jezyku polskim, jak i angielskim.
+% Pamietaj o madrym (zgodnym z logicznym rozbiorem zdania oraz estetyka) recznym
+% zlamaniu wierszy w temacie pracy, zwlaszcza tego w jezyku pracy. Uzyj do tego
+% polecenia \fmlinebreak.
+\polishtitle {Implementacja silnika przetwarzania procesów biznesowych opisywanych standardem BPMN~2.0}
+\englishtitle   {Implementation of a business process processing engine described \fmlinebreak in the BPMN~2.0 standard
+}
+
+\polishabstract {
+Modelowanie procesów biznesowych jest szeroko wykorzystywane przez przedsiębiorstwa, ponieważ ułatwia ich analizę oraz automatyzację. Jednocześnie coraz bardziej popularne podejście \textit{low-code} wprowadza nowy paradygmat programowania, w którym część zachowań działania systemu reprezentowana jest na ustandaryzowanym diagramie, ich orkiestracją zajmuje się dedykowany do tego \textit{framework}, a logika biznesowa jest doprecyzowana za pomocą mikroserwisów.
+
+Celem niniejszej pracy jest przygotowanie własnej implementacji silnika procesów biznesowych, zgodnego ze standarderm \bpmn 2.0. Przygotowany silnik zostanie porównany z istniejącymi implementacjami oraz będzie poddany szeregom testów (m.in. wydajnościowych i zgodności).
+
+\noindent Link do repozytorium na GitHubie: \\
+\url{https://github.com/TheKetrab/Polokus}
+}
+\englishabstract{
+
+Business process modeling is widely used by enterprises because it facilitates their analysis and automation. At the same time, the increasingly popular \textit{low-code} approach introduces a new programming paradigm in which part of the system's behavior is described on a standardized diagram, orchestrated by a dedicated framework, and the business logic is refined using microservices.
+
+The purpose of this paper is to prepare custom implementation of the business process engine, compatible with the \bpmn 2.0 standard. The engine will be compared with some existing implementations and will be subjected to a series of tests (including performance and compatibility).
+
+\noindent Link to the GitHub repository: \\
+\url{https://github.com/TheKetrab/Polokus}
+}
+
+% w pracach wielu autorow nazwiska mozna oddzielic poleceniem \and
+\author         {Bartłomiej Grochowski}
+% w przypadku kilku promotorow, lub koniecznosci podania ich afiliacji, linie
+% w ponizszym poleceniu mozna zlamac poleceniem \fmlinebreak
+\advisor        {dr Wiktor Zychla}
+\date          {}                     % Data zlozenia pracy
+% Dane do oswiadczenia o autorskim wykonaniu
+\transcriptnum {300951}                     % Numer indeksu
+\advisorgen    {dr. Wiktora Zychli} % Nazwisko promotora w dopelniaczu
+%%%%%
+
+%%%%% WLASNE DODATKOWE PAKIETY
+%
+
+% ----- typical vertical space
+\newcommand{\typicalVerticalSpace}{\setlength\itemsep{0em}}
+
+
+
+% ----- ----- -----
+
+%\newcommand{\cs}{C{\lserif\#}}
+\newcommand{\cs}{C\#}
+%\newcommand{\bpmn}{\textsc{bpmn }}
+%\newcommand{\bpmnnospace}{\textsc{bpmn}}
+%\newcommand{\Bpmn}{\textsc{Bpmn }}
+\newcommand{\bpmn}{BPMN }
+\newcommand{\bpmnnospace}{BPMN}
+\newcommand{\Bpmn}{\textsc{BPMN }}
+
+
+\begin{document}
+
+%%%%% POCZĄTEK ZASADNICZEGO TEKSTU PRACY
+
+% ===== ===== CHAPTER 1 ===== =====
+\chapter{Wprowadzenie}
+Stworzenie oraz utrzymywanie dużego lub małego systemu informatycznego często wiąże się ze współpracą wielu ludzi. Każdy z nich posiada pewne umiejętności, które składają się na sukces produktu. Przy udoskonalaniu programu pracują programiści, testerzy, menadżer produktu, analitycy biznesowi i konsultanci, a wreszcie użytkownicy końcowi, którzy swoją opinią, zapotrzebowaniem na nowe funkcjonalności i zapłatą za ich wdrożenie, mają wpływ na rozwijanie się programu. Aby te wszystkie grupy mogły łatwo się porozumieć, często działanie systemu dokumentowane jest na różnego rodzaju diagramach. Jednym z nich są diagramy procesów biznesowych.
+
+Jednocześnie w ostatnich kilku latach bardzo popularne są terminy ,,no code'' oraz ,,low code''. Są to paradygmaty programowania, w których użytkownik składa system z gotowych komponentów i w przypadku ,,low code'' ma możliwość doprecyzowania pewnych szczegółów za pomocą wybranego języka programowania \cite{lowcode-nocode}. Ważną cechą takiego tworzenia programów jest niski próg wejścia osoby programującej i szybkość tworzenia gotowych produktów, co obniża koszty procesu wytwarzania oprogramowania. Dzięki użyciu \textit{no-code/low-code} pracownicy mogą skupić się na implementacji logiki biznesowej, zamiast na oprogramowywaniu właściwego obsługiwania zdarzeń, kolejności wykonania czy przechwytywania wyjątków. Dedykowane do tego paradygmatu frameworki oferują różnego rodzaju diagramy, na których projektuje się logikę programu. Niektóre z nich są standaryzowane, co może ułatwiać migrowanie pomiędzy różnymi dostawcami tych technologii.
+
+Modelowanie procesów biznesowych - BPM (ang. \textit{Business Process Modeling}), to reprezentowanie procesów klienta\footnote{Klient to odbiorca oprogramowania. Może być to w szczególnym przypadku przedsiębiorstwo, czy instytucja (szkoła, urząd, ministerstwo).} w celu ułatwienia ich analizy, ulepszania oraz wprowadzania automatyzacji \cite{bpm-wiki}. Najczęściej takie procesy są układane przez analityków biznesowych i ekspertów w danej dziedzinie, niekoniecznie znających się na programowaniu. Sporządzenie diagramów graficznych może być również udokumentowaniem wymagań dla projektu informatycznego. Uznawane za pierwszą technikę modelowania procesów biznesowych są wykresy Gantta i sięgają początku XX wieku \cite{bpm-history-wiki}. Są to diagramy prezentujące rozkład pracy w danym okresie czasu. Przykładowy wykres pokazano na rysunku \ref{fig:grantt-chart}.
+
+\begin{figure}[H]
+    \includegraphics[width=.7\textwidth,center]{img/GranttChart.png}
+    \caption{Przykładowy wykres Grantta}
+    \label{fig:grantt-chart}
+\end{figure}
+
+Następnie pojawiały się schematy blokowe, diagramy strzałkowe, diagramy przepływu danych, aż po diagramy UML (ang. \textit{Unified Modeling Language}) powstałe w latach 90. XX wieku \cite{uml-wiki}, które przedstawiają pewien zbiór elementów i związków między nimi. Wyróżniamy dwie rodziny diagramów UML - diagramy struktur, które dokumentują statyczne elementy systemu i diagramy zachowań służące do opisywania dynamicznych elementów systemu takich jak procesy czy algorytmy. Jednym z najważniejszych diagramów zachowań, szczególnie użytecznym w modelowaniu biznesowym, jest diagram aktywności (ang. \textit{activity diagram}), którego zasadniczą funkcją jest przedstawienie sekwencji kroków, które są wykonywane przez modelowany fragment systemu. Zawiera on elementy takie jak czynności, przepływy sterujące, czy węzły decyzyjne. Przykładowy diagram aktywności UML przedstawiono na rysunku \ref{fig:uml-activity-diagram}.
+
+\begin{figure}[H]
+    \includegraphics[width=.9\textwidth,center]{img/UML_activity_diagram.png}
+    \caption{Przykładowy diagram aktywności UML}
+    \label{fig:uml-activity-diagram}
+\end{figure}
+
+Z biegiem czasu coraz więcej klientów wykorzystywało w swoich projektach modelowanie biznesowe. Graficzne przedstawienie aktywności ułatwiało zrozumienie działania systemu oraz pozwalało na szybsze projektowanie kolejnych procesów. Trzeba było jednak przenosić model procesu na kod w wybranym języku programowania, co było sporym nakładem pracy. Aby temu zaradzić pojawił się pomysł, żeby do diagramu procesu dodać środowisko uruchomieniowe - nazywane silnikiem procesów biznesowych, które potrafi taki diagram interpretować i wykonywać proces, który jest opisywany. Pojawiły się więc pierwsze narzędzia przeznaczone do projektowania i wykonywania procesów.
+
+Żeby uniknąć sytuacji, w której każde narzędzie narzuca własne konwencje tworzenia wykonywalnych diagramów, zaczęto wprowadzać standaryzowane języki opisujące procesy wykonywalne. Na początku XXI wieku powstał standard BPEL (ang. \textit{Business Process Execution Language}) rozwijany przez Microsoft i IBM przeznaczony do definiowania procesów biznesowych opartych o usługi sieciowe. Równolegle, od 2001 roku, powstawał zapis \bpmn (ang. \textit{Business Process Model and Notation}) aktualnie standaryzowany przez organizację OMG\footnote{\textit{Object Management Group} (OMG) - zgrupowanie powstałe w 1989 r., którego celem jest stanowienie specyfikacji (bez implementacji) dla szeregu technologii \cite{omg-wiki}. Jednymi z wielu opublikowanych przez tę organizację standardów są UML oraz BPMN.} i będący aktualnie najbardziej popularną notacją procesów BPM. Notacja ta została opublikowana w 2004. roku. Celem \bpmn nie jest zastąpienie UML, tylko dostarczenie nowego modelu, który pozwala łatwo i precyzyjnie tłumaczyć zapis biznesowy na język techniczny. Standard ten był ciągle rozwijany: w 2008. roku dostarczono wersję 1.1, a rok później 1.2. Zapewniano wtedy mechanizm tłumaczenia diagramu \bpmn na BPEL, tak żeby dedykowany silnik mógł go wykonać. Wersja \bpmn 2.0 została opracowana w 2010. roku i dostarczyła formalną definicję określenia konstrukcji i reguł tworzenia procesów. Została zdefiniowana semantyka wykonania procesu zapisanego w \bpmn oraz dokładne schematy XSD mówiące, jak proces powinien być serializowany do XML. Dzięki temu można było wdrażać do silników procesów biznesowych interpretację procesów zapisywanych w \bpmnnospace. Najnowszą wersją standardu jest 2.0.2, zaprezentowana w styczniu 2014. roku \cite{bpmn-new-20}.
+
+
+W tej pracy zostanie omówione współczesne wykorzystywanie diagramów z użyciem standardu \bpmn 2.0. W rozdziale \ref{chapter-bpmn} zostaną opisane poszczególne komponenty \bpmn wraz z przykładami ich użycia. W kolejnym - rozdziale \ref{chapter-programs}, pokazane zostaną dwie platformy dedykowane procesom biznesowym wykorzystywane przez klientów. Zostanie pobieżnie omówiona architektura systemów oraz cechy, którymi się wyróżniają i które są wartościowe dla użytkowników końcowych. Zostanie również omówione skalowanie się usług wykonywania procesów. W rozdziałach \ref{chapter-polokus}i \ref{chapter-implementation} zostanie pokazany autorski program będący implementacją silnika przetwarzania procesów biznesowych. Skupiono się tam odpowiednio na instrukcji korzystania z aplikacji i na zastosowanych w implementacji rozwiązaniach. W rozdziale \ref{chapter-tests} zostanie opisany sposób testowania poprawności wykonywania procesów oraz porównanie, jak wypada autorska implementacja w porównaniu z komercyjnymi rozwiązaniami.
+
+
+\chapter{Standard BPMN 2.0}\label{chapter-bpmn}
+Głównym celem \bpmn jest wspieranie zarządzania procesami biznesowymi poprzez zapewnienie standaryzowanej notacji tak, aby proces był czytelny zarówno dla użytkowników technicznych, jak i biznesowych. Jednocześnie umożliwia reprezentacje złożonej semantyki procesów. Kluczowym elementem tego standardu są kształty i ikony do precyzowania typu danego elementu. Podstawowe kształty \bpmn są bardzo podobne do schematów blokowych, jednak oprócz przedstawiania kolejności wykonywania akcji, reprezentują również działania specyficzne dla firmy, takie jak wysyłanie wiadomości do innych działów albo eskalacja problemów (przerwanie akcji i podjęcie konkretnych działań). \Bpmn jest językiem zdolnym do zwięzłego opisania niuansów zachowania procesu na diagramie. Jednocześnie konstrukcje takie jak pętle, rekursja i zmienne, sprawiają, że jest językiem zupełnym w sensie Turinga\footnote{Turing-zupełność - cecha języka mówiąca o tym, że można go użyć do symulacji dowolnej maszyny Turinga. Zgodnie z tezą Churcha oznacza to, że każdy problem, który da się rozwiązać pewnym algorytmem, da się rozwiązać na maszynie Turinga, a więc również w języku, który jest Turing-zupełny.} i może opisać szczegóły techniczne, które kontrolują wykonanie procesu przez silnik (automat). Te cechy sprawiają, że język ten łączy świat biznesu i IT. 
+
+Bruce Silver w swoim podręczniku podaje podział elementów \bpmn na trzy poziomy \cite{bruce-silver-bpmn-levels}. Poziom pierwszy nazywany \textit{Descriptive Process Modeling Conformance} wyróżnia podstawowe elementy potrzebne do zdefiniowania podstawowego procesu (zdarzenia startowe i końcowe, czasomierze (ang. \textit{timers}) i obsługa wiadomości). Wszystkie programy dedykowane do pracy z procesami \bpmn powinny wspierać te elementy. Poziom drugi nazywany \textit{Analytic Process Modeling Conformance} dodaje bardziej szczegółowe elementy reprezentowalne na diagramie, takie jak różnego rodzaju zdarzenia pośrednie, sygnały, nowe typy bramek. Ostatni, trzeci poziom, definiuje standardy do opisu tego, czego nie widać na diagramie, na przykład definicje skryptów do wykonania w bloku \textit{Script Task}. Wiele programów definiuje dodatkowe standardy, do reprezentowania swoich feature'ów lub własnych konwencji obsługi chociażby komunikacji ze światem zewnętrznym poprzez REST API.
+
+Diagramy \bpmn składają się z elementów przepływu (ang. \emph{flow nodes}), elementów łączących, basenów i dodatkowych informacji \cite{process-maker-bpmn}. Te informacje mają na celu doprecyzowanie pewnych szczegółów na diagramie (ale w formie wykonywalnej procesu przez automat nie mają znaczenia), a więc są to wszelkiego rodzaju komentarze. Baseny i tory (ang. \emph{pools and lanes}) mają reprezentować konkretnego wykonawcę procesu, podmiot. Przykładowo może to być pracownik, szef, klient. Nie wpływają one na wykonanie procesu - jedynie graficznie wskazują, kto wykonuje pewne czynności. Elementy łączące można interpretować jako krawędzie skierowane w grafie procesu. Do tej grupy należą sekwencje (strzałki łączące elementy przepływu) oraz linie wiadomości (przerywane linie pomiędzy różnymi basenami lub torami - od obiektu wysyłającego do obiektu otrzymującego); nie są one wykonywane przez automat, jednak stanowią istotną rolę podczas procesu parsowania, gdyż zawierają informacje o następnikach elementów przepływu, więc definiują kolejność wykonywania. Ostatnia grupa, elementy przepływu, to elementy, które będzie wykonywał automat, to znaczy robił pewne akcje zgodnie z semantyką konkretnego obiektu. Elementy przepływu dzielą się na zadania, zdarzenia i bramki.
+
+\section{Zadania}
+W \bpmn zadanie (ang. \textit{Task}) to niepodzielna czynność w przebiegu procesu \cite{bruce-silver-bpmn-tasks}. Węzły zadań w procesie opisują pewne czynności do wykonania przez osobę lub maszynę. Na diagramie są one oznaczane prostokątem z zaokrąglonymi rogami. Chociaż na diagramie dającym tylko graficzne przedstawienie procesu głównie używa się ogólnego typu zadań, to bardziej szczegółowe typy zadań są przydatne w modelowaniu wymagań inżynierskich. Należy zaznaczyć, że proces może kontynuować wykonanie, dopiero gdy zadanie zostanie wykonanie. Pojedyncze zadanie może zostać ukończone od razu albo zająć trochę więcej czasu. \textit{Task} może również zakończyć się błędem. W \bpmn takie sytuacje są obsługiwane przez przechwytywanie zdarzeń brzegowych (ang. \textit{boundary events}). Dokładna interpretacja niektórych zadań jest narzucana przez silnik wykonujący proces. Poniżej zaprezentowano graficzną reprezentację typów zadań definiowanych przez standard \bpmn 2.0 wraz z opisem ich semantyki \cite{visual-paradigm-tasks-explained}.
+
+
+\newcommand{\mypointsep}{10pt}
+
+\noindent\begin{minipage}[t]{0.1\textwidth}\vspace{0pt}
+\includegraphics[width=50px]{img/elements/task_abstract.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.85\textwidth}\vspace{0pt}
+\textbf{\textit{Task}} - najbardziej ogólny typ zadania. W nazwie powinno być zawarte, co tak naprawdę powinno się wydarzyć, natomiast niesie to tylko i wyłącznie informację dla czytelnika diagramu, a proces automatycznie zakańcza sukcesem takie zadanie.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.1\textwidth}\vspace{0pt}
+\includegraphics[width=50px]{img/elements/task_user.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.85\textwidth}\vspace{0pt}
+\textbf{\textit{User Task}} - oznacza, że użytkownik powinien wykonać pewną akcję za pomocą aplikacji podłączonej do procesu. Przyjęta będzie konwencja, że użytkownik wybiera jedną z opcji i zadanie się zakańcza.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.1\textwidth}\vspace{0pt}
+\includegraphics[width=50px]{img/elements/task_service.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.85\textwidth}\vspace{0pt}
+\textbf{\textit{Service Task}} - wykonanie przez silnik pewnej akcji, pewnego programu. Nazwa zadania będzie mapowana na konkretny program do wykonania.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.1\textwidth}\vspace{0pt}
+\includegraphics[width=50px]{img/elements/task_subprocess.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.85\textwidth}\vspace{0pt}
+\textbf{\textit{Subprocess Task}} - to zadanie uruchamia kolejny proces i czeka na jego ukończenie. Używane jest głównie po to, aby nie zaburzać jednolitego poziomu szczegółowości procesu, przy jednoczesnym dokładnym zdefiniowaniu konkretnej akcji.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.1\textwidth}\vspace{0pt}
+\includegraphics[width=50px]{img/elements/task_callactivity.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.85\textwidth}\vspace{0pt}
+\textbf{\textit{Call Activity}} - jest to zdarzenie, które uruchamia proces zdefiniowany w osobnym pliku bpmn - zewnętrzny w stosunku do bieżącej definicji procesu.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.1\textwidth}\vspace{0pt}
+\includegraphics[width=50px]{img/elements/task_manual.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.85\textwidth}\vspace{0pt}
+\textbf{\textit{Manual Task}} - zadanie wykonywane nie przez silnik. Przyjęta będzie konwencja, że wykonywane jest tak jak zwykły \textit{Task} (czyli nic się nie dzieje), ale silnik czeka na akceptację ze strony użytkownika, aby zakończyć zadanie.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.1\textwidth}\vspace{0pt}
+\includegraphics[width=50px]{img/elements/task_receive.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.85\textwidth}\vspace{0pt}
+\textbf{\textit{Receive Task}} - pokazuje, że proces musi czekać na otrzymanie zdefiniowanej wiadomości, żeby kontynuować. Zadanie jest zakończone po otrzymaniu wiadomości.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.1\textwidth}\vspace{0pt}
+\includegraphics[width=50px]{img/elements/task_send.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.85\textwidth}\vspace{0pt}
+\textbf{\textit{Send Task}} - reprezentuje zadanie, które wysyła wiadomość do innego procesu i jest zakończone natychmiast po jej wysłaniu.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.1\textwidth}\vspace{0pt}
+\includegraphics[width=50px]{img/elements/task_script.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.85\textwidth}\vspace{0pt}
+\textbf{\textit{Script Task}} - wykonywane przez silnik pewnego skryptu w ustalonym języku. Najczęściej ma na celu modyfikację zmiennych procesu.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.1\textwidth}\vspace{0pt}
+\includegraphics[width=50px]{img/elements/task_businessrule.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.85\textwidth}\vspace{0pt}
+\textbf{\textit{Business Rule Task}} - zapewnia mechanizm dostarczania danych wejściowych do silnika reguł biznesowych, a następnie uzyskiwania danych wyjściowych po ewaluacji. Silniki reguł biznesowych są często zintegrowane z silnikami do przetwarzania procesów. Dedykowanym dla \bpmn jest DMN (ang. \textit{Decision Model and Notation} - składa się z tabel opisujących pewne reguły biznesowe. Na przykładzie poniżej pokazano możliwe zastosowanie: zadanie ,,Dorosły?'' zamienia zmienną wejściową \$wiek na zmienną wyjściową \$x, a następnie zostaje wyświetlona odpowiednia strona.
+\begin{center}
+\includegraphics[width=0.7\textwidth]{img/exampleBusinessRule.png}
+\end{center}
+\end{minipage}
+
+\vspace{\mypointsep}
+
+W celu ilustracji wykorzystania różnych zadań w procesach biznesowych, został przygotowany przykład pokazany na rysunku \ref{fig:tasks-example}. Przedstawia on proces zamawiania pizzy w pizzerii gdzie pracownik wydaje tylko jedną pizzę dziennie. Zadanie wyboru pizzy przez klienta, wymaga zdecydowania się na którąś z opcji, dlatego wymagana jest akcja użytkownika, a więc użyty został \textit{User Task}. Aktorzy tego procesu komunikują się używając zadań typu \textit{Send Task} i \textit{Receive Task}. Aby zrealizować płatność, pracownik oddelegowuje zadanie do jakiegoś zewnętrznego serwisu odpowiedzialnego za to, co reprezentowane jest poprzez użycie obiektu \textit{Service Task}. Gdy pizza jest gotowa, pracownik pizzerii klika ,,OK'', to znaczy wykonuje jakąś manualną akcję, by zaznaczyć, że wykonał odpowiednie zadanie typu \textit{Manual Task}. Reszta zadań, które są abstrakcyjne, nie będą wykonane przez silnik przetwarzający proces, ale są widoczne na diagramie, jako dodatkowa informacja dla osób oglądających diagram procesu.
+
+\begin{figure}[H]
+    \includegraphics[width=\textwidth,center]{img/simplePizzaOrder.png}
+    \caption{Przykładowy proces zamawiania pizzy}
+    \label{fig:tasks-example}
+\end{figure}
+
+
+\section{Zdarzenia}
+
+Zdarzenia (ang. \textit{Events}) to elementy procesów, które reprezentują, że coś ,,dzieje się'' w trakcie procesu \cite{bruce-silver-bpmn-events}. W \bpmn zdarzenia reprezentowane są na diagramie jako koła. Obwody kół definiują rodzaj zdarzenia, to znaczy, czy jest to zdarzenie początkowe (pojedynczy obwód), wewnętrzne (podwójny obwód), końcowe (pogrubiony obwód), czy brzegowe (podwójny obwód, umieszczane na obwodzie zadania). Niejednokrotnie różnica między zadaniami a zdarzeniami wewnętrznymi jest tylko syntaktyczna (inaczej zapisywana, aby czytelnik diagramu lepiej widział co się dzieje) a semantycznie dzieje się to samo. To co znajduje się w środku koła to typ zdarzenia i określa jego semantykę. Podział zdarzeń jest również ze względu na to, czy jest to zdarzenie chwytające (niezamalowane ikony), czy rzucające (zamalowane ikony). Na rysunku \ref{fig:event-types} przedstawiono pewne ważniejsze typy procesów \bpmn w podziale ze względu na typ oraz na rodzaj zdarzenia.
+
+\begin{figure}
+    \includegraphics[width=0.8\textwidth,center]{img/EventsTypes.jpg}
+    \caption{Implementowane zdarzenia w systemie Polokus}
+    \label{fig:event-types}
+\end{figure}
+
+W \bpmn zdefiniowano wiele typów zdarzeń, tak żeby dobierać odpowiednie do konkretnych sytuacji, a każde z nich wyróżnia się unikatową ikoną.
+
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/event_intermediate_manual.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Abstract Event}} - to zdarzenie, które może mieć sens tylko na diagramie z odpowiednim opisem. Gdy jest rodzaju \textit{Start}, traktowane jest jako manualne, to znaczy takie, które rozpoczyna działanie procesu manualnie użytkownik.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/event_intermediate_message_catching.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Message Event}} - to zdarzenie symbolizuje komunikację między aktorami procesu (reprezentowanymi jako baseny (ang. \textit{pool}) wewnątrz wykonywanej grupy procesów. W rodzaju \textit{Throwing} wysyła wiadomość, a w rodzaju \textit{Catching} oczekuje na wiadomość.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/event_intermediate_signal_catching.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Signal Event}} - zdarzenie, które wysyła lub odbiera sygnały służące podobnie jak wiadomości do komunikacji między procesami. Sygnałem może być również jakieś zdarzenie zewnętrzne, które silnik przechwyci (takie jak na przykład pojawienie się nowego pliku w obserwowanym folderze).
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/event_intermediate_timer_catching.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Timer Event}} - zdarzenie służące do opóźnienia procesu (czekania) lub wykonywania pewnych akcji cyklicznie. Możliwe użycie przedstawiono na poniższym przykładzie - jest to proces, który codziennie o ósmej rano wykonuje zadanie Job A, następnie czeka dziesięć sekund i wykonuje zadanie Job B.
+\begin{center}
+\includegraphics[width=0.7\textwidth]{img/exampleTimer.png}
+\end{center}
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/event_intermediate_conditional_catching.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Conditional Event}} - ten typ zdarzenia przechowuje wewnątrz pewien warunek, który próbuje cały czas ewaluować. Gdy tylko warunek staje się prawdziwy, proces może kontynuować wykonanie lub wystartować.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/event_intermediate_link_catching.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Link Event}} - zdarzenia typu link są używane w celu połączenie dwóch odległych od siebie części procesu. Można utożsamiać je z instrukcją ,,goto''. Najczęściej używane są do tworzenia pętli lub unikania długich strzałek czy ich przecięć na diagramie procesu.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/event_intermediate_compensation_throwing.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Compensation Event}} - ma na celu wycofanie pewnych zmian w razie jakiegoś niepowodzenia. W przykładzie poniżej, w zdarzeniu kompensacji anulowana jest rezerwacja. Gdyby pominięto ten krok, mimo błędu płatności, hotel byłby ciągle zarezerwowany i nikt nowy nie mógłby go wybrać do swojego zamówienia.
+\begin{center}
+\includegraphics[width=0.7\textwidth]{img/exampleCompensation.png}
+\end{center}
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/event_intermediate_escalation_throwing.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Escalation Event}} - ten typ zdarzenia jest używany, gdy proces napotka na jakąś sytuację, na którą potrzeba zareagować. Wykonywane są wtedy odpowiednie akcje - uruchamiana jest sekwencja wychodząca z odpowiadającego zdarzenia chwytającego konkretną eskalację. Często jest to utożsamiane z blokiem try-catch, natomiast domyślnie eskalacja nie przerywa procesu. Sytuacja w przykładzie poniżej jest następująca - jeśli o zawartość strony pyta nowy użytkownik, to eskalujemy tę sytuację i po skończeniu podprocesu, wykona się sekwencja wychodząca ze zdarzenia brzegowego etykietowanego przez \textit{,,ADD USER''}, czyli dodanie użytkownika do bazy danych.
+\begin{center}
+\includegraphics[width=0.7\textwidth]{img/exampleEscalation.png}
+\end{center}
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/event_end_error.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Error Event}} - zdarzenie, które symbolizuje emitowanie błędu. Zgłaszany jest wyjątek odpowiedniego typu. Może być on złapany na przykład przez zdarzenia brzegowe.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/event_end_terminate.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Terminate Event}} - zdarzenie, które wymusza zakończenie działania całego procesu. Jeśli w poniższym przykładzie zadanie Job A będzie trwało dłużej niż godzinę, to zostanie ono zatrzymane, zadanie Job B się nie rozpocznie, a cały proces zostanie przerwany i zakończony sukcesem.
+\begin{center}
+\includegraphics[width=0.7\textwidth]{img/exampleTerminate.png}
+\end{center}
+\end{minipage}
+
+Wyróżniamy również kilka rodzajów zdarzenia: startowe (ang. \textit{Start}), brzegowe (ang. \textit{Boundary}), pośrednie (ang. \textit{Intermediate}) i końcowe (ang. \textit{End}). Zdarzenia startowe rozpoczynają proces - być może manualnie, a być może poprzez jakiś wyzwalacz. Zdarzenia pośrednie są wywoływane w środku procesu, podczas jego działania. Zdarzenia końcowe zakańczają proces i mogą mieć różne efekty uboczne, jak na przykład wysłanie wiadomości, zakończenie się błędem, eskalacją itp. Na więcej uwagi zasługują zdarzenia brzegowe.
+
+Zdarzenie brzegowe umieszczane jest na obwodzie zadania lub podprocesu. Na brzegu jednego obiektu może znajdować się kilka takich zdarzeń. Są one dzielone na przerywające i nieprzerywające, oznaczone odpowiednio podwójnym ciągłym obwodem i podwójnym przerywanym obwodem i umieszczane na obwodzie zadania. Zdarzenie przerywające - jeśli nastąpi - przerywa zadanie, którego dotyczy (podproces zostaje zatrzymany), a proces kontynuuje wykonanie sekwencją wychodzącą ze zdarzenia brzegowego. Standard \bpmn wprowadził zdarzenia nieprzerywające dopiero w wersji 2.0 \cite{bruce-silver-bpmn-boundary-events-v2}. Jak sugeruje nazwa, nie przerywają one wykonywanego zadania, natomiast, jeśli wydarzy się pewne zdarzenie, to po wykonaniu zadania proces będzie kontynuował przepływ wychodzącą sekwencją oraz zostanie uruchomiona równoległa ścieżka dla sekwencji wychodzącej ze zdarzenia brzegowego.
+
+ Podział ze względu na \textit{catching/throwing} zwraca uwagę na: \textit{catching} - proces oczekuje na pewne zdarzenie, zanim ruszy dalej (np. \textit{Time Intermediate Catching Event} może czekać na odpowiednią godzinę); \textit{throwing} - proces wykonuje pewną akcję i rusza dalej (na przykład \textit{Intermediate Throwing Signal Event} emituje sygnał). 
+
+\begin{figure}[H]
+    \includegraphics[width=0.75\textwidth,center]{img/exampleBookingHotel.png}
+    \caption{Przykład procesu z różnymi zdarzeniami}
+    \label{fig:exampleBookingHotel}
+\end{figure}
+
+Aby zaprezentować użycie zdarzeń brzegowych na rysunku \ref{fig:exampleBookingHotel} zaprezentowano proces rezerwacji wakacji. Zadaniem procesu serwera jest sprawdzanie w pętli, czy serwer jest aktywny - jeśli przestanie być, to wysyłana jest wiadomość do klienta i automatycznie kończy się podproces rezerwacji, ponieważ użyto zdarzenia przerywającego (z ciągłym podwójnym obwodem). Gdyby coś poszło nie tak przy rezerwacji lotu lub hotelu - na przykład wszystkie miejsca w wybranym samolocie są wykupione, to odpowiednie zdarzenie eskalacyjne złapie tę sytuację i obsłuży ją, to znaczy proces powróci na początek.
+
+\section{Bramki}
+
+Bramki (ang. \textit{Gateways}) określają, która ścieżka (ścieżki) przepływu jest wybierana przez proces \cite{bruce-silver-bpmn-gateways}. Pojedyncza bramka może mieć wiele wejść oraz wiele wyjść. Te bloki nazywamy bramkami, ponieważ ich semantyka umożliwia lub zabrania przejście procesowi przez nią według pewnych warunków. Jest to tak zwane kontrolowanie przepływu. Bramki nie reprezentują wykonania pracy, a mają na celu jedynie wybór odpowiedniej dalszej ścieżki przepływu lub synchronizację trwających przepływów. W \bpmn bramki są reprezentowane kształtem rombu, a ikony w środku mówią jakiego są typu.
+
+%\begin{figure}[H]
+%    \includegraphics[width=0.75\textwidth,center]{img/GatewaysTypes.png}
+%    \caption{Podstawowe bramki w standardzie BPMN 2.0}
+%    \label{fig:gate-types}
+%\end{figure}
+
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/gate_exclusive.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Exclusive Gateway}} (\textsc{xor}) - dla danego wejścia, tylko jedna ze ścieżek jest poprawna. Gdy wykonanie przepływu procesu znajduje się w tej bramce, ewaluowane są wszystkie wychodzące sekwencje w kolejności, w jakiej zostały zdefiniowane. Jako wyjście wybierana jest sekwencja, która jako pierwsza zostanie obliczona do wartości \textit{true}. Jeśli nie można wybrać żadnego z wyjść, to ta bramka zgłosi wyjątek. Brak etykiety do ewaluacji wyrażenia na strzałce będzie przyjmowany jako \textit{true}.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/gate_parallel.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Parallel Gateway}} (\textsc{and}) - bramki równoległe reprezentują rozbicie procesu na dwie wykonujące się jednocześnie sekwencje (równoczesne wykonywanie zadań). Bramka taka występuje w dwóch rodzajach: \textit{Fork} - gdy z bramki wychodzi $n \geq 2$ sekwencji (wtedy zostają uruchomione jednocześnie wszystkie wychodzące sekwencje) lub \textit{Join} - gdy do bramki wchodzi $n \geq 2$ sekwencji (wtedy bramka czeka aż wszystkie wchodzące sekwencje zakończą przepływ). Bramka równoległa może łączyć zachowania \textit{Fork} i \textit{Join}. Wówczas najpierw zostaną połączone wszystkie przychodzące sekwencje, a dopiero później zostaną uruchomione wszystkie wychodzące sekwencje.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/gate_inclusive.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Inclusive Gateway}} (\textsc{or}) - ta bramka określa, że zostaną wybrane jedna lub więcej dostępnych sekwencji i uruchomione równocześnie, w zależności od tego czy obliczona wartość boolowska na sekwencji to \textit{true}. Warto zaznaczyć, że istnieje coś takiego jak sekwencja domyślna oznaczana na diagramach przez przekreśloną strzałkę wychodzącą. Oznacza, że sekwencja zostanie wybrana wtedy i tylko wtedy, jeśli wszystkie inne sekwencje zostały obliczone do wartości \textit{false}.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/gate_complex.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Complex Gateway}} - bramka złożona jest dedykowana do użycia, w przypadku gdy wybór sekwencji wyjściowej zależy od jakichś bardziej skomplikowanych warunków, których nie da się łatwo wyrazić przy pomocy pozostałych bramek. Można o niej myśleć, że jest to bramka ,,skryptowa'' i w konkretnym silniku można dopisać odpowiednią logikę do wyboru sekwencji wyjściowej. Na diagramie graficznym niezbędna jest stosowna adnotacja, aby zrozumieć proces i zachowanie tej bramki.
+\end{minipage}
+
+\vspace{\mypointsep}
+
+\noindent\begin{minipage}[t]{0.075\textwidth}\vspace{0pt}
+\includegraphics[width=40px]{img/elements/gate_eventbased.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.875\textwidth}\vspace{0pt}
+\textbf{\textit{Exclusive Event Based Gateway}} - jest to bramka sterowana zdarzeniami, to znaczy taka, z której wychodzą sekwencje do zdarzeń pośrednich. Jedyną wybraną sekwencją wyjściową będzie ta, które zdarzenie nastąpi pierwsze. Podążając za poniższym przykładem: Jeśli najpierw minie dziesięć sekund, to zostanie wybrana pierwsza sekwencja, jeśli najpierw zostanie złapany sygnał ,,SIGNAL'' to druga, a jeśli w którymś momencie zmienna \$x przyjmie wartość większą niż 42 to trzecia.
+\begin{center}
+\includegraphics[width=0.7\textwidth]{img/exampleEventBasedGateway.png}
+\end{center}
+\end{minipage}
+
+\vspace{\mypointsep}
+
+
+% ===== ===== CHAPTER 2 ===== =====
+\chapter{Programy przetwarzające procesy biznesowe}\label{chapter-programs}
+
+Zważywszy na usprawnianie oraz organizację pracy, programy zarządzające procesami są szeroko wykorzystywane przez klientów. Na rynku istnieje sporo programów dedykowanych procesom biznesowym - od małych otwartoźródłowych projektów, po licencjonowane oprogramowanie ,,\textit{enterprise}''. W tej części pracy przeglądnięto pewne programy zapewniające wsparcie dla \bpmn 2.0, aby przyjrzeć się oferowanym przez nie funkcjom - co tak naprawdę jest wartościowe dla końcowych użytkowników. Przyglądnięto się również zastosowanym rozwiązaniom programistycznym.
+
+\section{Camunda}
+Camunda to  darmowa i opensource'owa platforma dedykowana procesom \bpmn rozwijana w Javie \cite{wiki-camunda}. Graficzny modeler procesów jest udostępniany na licencji MIT (w wersji na systemy operacyjne - Camunda Modeler, w wersji na przeglądarki internetowe - bpmn.io), reszta komponentów na licencjach własnościowych. Wersja płatna zawiera moduły optymalizujące procesy oraz wsparcie przy używaniu produktu. Głównym celem Camundy jest zarządzanie procesami i ich uruchamianie(wykonywanie), które można osadzić w aplikacjach Java i innych językach za pośrednictwem REST API.
+
+Camunda Modeler umożliwia sprawne tworzenie własnych procesów przy użyciu bloków zdefiniowanych w standardzie \bpmnnospace. Edytor zawiera również panel właściwości, w których można doprecyzować pewne szczegóły bloków, niewidoczne na diagramie, a widoczne w odpowiadającym pliku XML. Kolejną ważną cechą jest weryfikacja zgodności ze standardem \bpmn i czy proces można uruchomić, to znaczy czy na przykład wszystkie bloki typu \textit{Service Task} mają podpiętych wykonawców zadania. Bez takiej weryfikacji, użytkownik końcowy mógłby się spotkać z problem takim, że uruchomiony proces utknie w pewnym bloku i zostaje przerwany z powodu niezdefiniowanego zachowania.
+
+Camunda BPMN Workflow Engine to silnik stworzony do wykonywania procesów. Jednym z typowych przypadków użycia jest orkiestracja microservice'ów, to znaczy zarządzanie grupą współpracujących programów: nadzorowanie ich, koordynacja wymiany wiadomości czy upewnianie się, że zostały właściwie wykonane \cite{camunda-orchestration}. Dzięki temu użytkownicy mogą skupić się na programowaniu logiki biznesowej, a stabilność integracji pomiędzy komponentami zapewnia framework wykonujący cały proces biznesowy.
+
+\begin{figure}
+    \includegraphics[width=0.75\textwidth,center]{img/camunda-architecture-overview.png}
+    \caption{Architektura systemu Camunda \cite{camunda-docs-introduction}}
+    \label{fig:camunda-overview}
+\end{figure}
+
+Rysunek \ref{fig:camunda-overview} przedstawia schemat połączeń między komponentami w systemie. Połączenie między programem do modelowania procesów, a silnikiem przechodzi przez ,,\textit{File Repository}'', co wskazuje na to, że łącznikiem między tymi komponentami są pliki. Proces zapisany w pliku XML jest parsowany do obiektów Java, które implementują poszczególne zachowania obiektów \bpmn zgodnie z semantyką opisaną w standardzie. Widać również połączenie z zewnętrznymi usługami - przez REST API, lub bezpośrednio osadzone w aplikacji Java.
+
+Kolejne, ważne z punktu widzenia użytkownika systemu komponenty, dotyczą zarządzania zdefiniowanymi procesami i działającymi ich instancjami. Dla Camundy są to kokpit i lista zadań. Umożliwiają one między innymi podgląd miejsca na diagramie, w którym znajduje się działający proces, schedule'owanie procesów według pewnych harmonogramów (ustalanych przykładowo datą i godziną), czy wyświetlanie standardowego wyjścia po wykonaniu poszczególnych bloków.
+
+\begin{figure}
+    \includegraphics[width=0.55\textwidth,center]{img/camunda-process-engine-architecture.png}
+    \caption{Architektura silnika procesów Camunda \cite{camunda-process-engine-architecture}}
+    \label{fig:camunda-process-engine-architecture}
+\end{figure}
+
+Na rysunku \ref{fig:camunda-process-engine-architecture} przedstawiono schemat samego silnika. Publiczne API to interfejs umożliwiający komunikację zewnętrznym aplikacjom z silnikiem. BPMN 2.0 Core Engine składa się z silnika wykonawczego dla struktur grafowych, parsera BPMN 2.0, który przekształca pliki XML na obiekty Java oraz zestaw implementacji ,,BPMN Behavior'', który zapewnia implementacje konstrukcji dla obiektów BPMN zgodnie z ich zdefiniowaną semantyką. Job Executor jest odpowiedzialny za przetwarzanie asynchronicznych operacji w tle (np. \textit{timers} czy inne długo trwające zadania). Warstwa trwałości (\emph{Persistance Layer}) służy za utrwalanie stanu instancji procesu w relacyjnej bazie danych, przy użyciu ORM MyBatis.
+
+Camunda dane o procesach przechowuje w relacyjnej bazie danych, której wybór zależy od użytkownika, a wspierane są: CockroachDB, IBM DB2, H2, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL \cite{camunda-docs-supported-db}. Umożliwia to autoryzację konkretnych zasobów. Infiksy nazw tabel wskazują na typ danych przechowywanych wewnątrz, przykładowo: RE oznacza ,,repozytorium'' i zawiera informacje o definicjach procesów i ich zasoby (np. obrazy); RU oznacza ,,czas wykonania'' (ang. \textit{runtime}) i zawiera dane o instancjach procesów, zadaniach użytkownika, zmiennych itp. Silnik przechowuje dane środowiska wykonawczego tylko podczas wykonywania instancji procesu i usuwa rekordy po jego zakończeniu. Dzięki temu tabele środowiska wykonawczego są małe i szybkie \cite{camunda-docs-db}. Warto zaznaczyć, że wykorzystanie takiego mechanizmu zapewnia spójność informacji w razie awarii - cała praca i odpowiedzialność potrzebna do utrzymywania ACID\footnote{ACID - właściwości gwarantujące poprawne przetwarzanie transakcji w bazach danych: Atomicy (utrwalamy albo wszystko albo nic z pojedynczej transakcji); Consistency (transakcja zachowuje niezmienniki bazy zgodnie z constraintami, triggerami i kluczami); Isolation (współbieżne wykonywanie wielu transakcji powoduje identyczny stan, jak wykonanie ich sekwencyjnie); Durability (raz zatwierdzona transakcja pozostanie zatwierdzona nawet w przypadku awarii systemu) \cite{wiki-acid}} spada na wybrany silnik bazodanowy.
+
+Camunda do definiowania różnych zachowań (na przykład etykietowania sekwencji) używa własnego języka, i zapisuje je w pliku bpmn jako własne rozszerzenie camunda:expression. Wiele metadanych (jak zmienne wejściowe i wyjściowe z Tasków) zapisywanych jest w rozszerzeniach modelu camunda. \textit{Script Tasks} są obsługiwane implementacjami silnika skryptów zgodnymi z JSR-223, i możliwe jest również używanie języka JavaScript i innych.
+
+Ważną cechą jest też rozszerzanie standardu \bpmn o własne funkcjonalności. Wykorzystywane są \textit{Service Tasks} znane ze standardu \bpmn. Camunda używa swojego mechanizmu \textit{External Tasks} - silnik przetwarzający proces publikuje jednostkę pracy do wykonania, którą wykonuje zdefiniowany przez rozszerzenie \textit{worker}, a po skończonej pracy zgłasza ukończenie (wzorzec \textit{Unit of Work}) \cite{camunda-docs-external-tasks}. Silnik nasłuchuje na sygnały na swoim endpoincie REST i może wykonać różne akcje w zależności od przysłanego zapytania (na przykład uruchomić proces). Dzięki temu, można tworzyć własne programy, które nasłuchują na własne zdarzenia i komunikując się z silnikiem poprzez REST, startują procesy \bpmnnospace.
+
+Na koniec warto wspomnieć o dwóch cechach: bezpieczeństwo i dostępność. Camunda udostępnia systemy uwierzytelniania i autoryzacji, dzięki czemu nie każdy użytkownik może uruchomić każdy proces - kontrola praw dostępu i dbanie o bezpieczeństwo. Camunda oferuje również uruchomienie instancji procesów na swoich serwerach w chmurze, dzięki czemu może odciążyć instancje użytkownika od obciążających zadań, oraz zapewnia ciągłość działania procesu i wysoką dostępność (ang. \textit{high availability}) \cite{camunda-blog-cloud}.
+
+\section{Kogito}
+
+Kogito to otwartoźródłowa technologia automatyzacji procesów biznesowych zaprojektowana i zoptymalizowana szczególnie dla środowisk chmurowych. Jest następcą programu Red Hat Automation Manager. Udostępnia on kilka ważnych dla biznesu funkcji takich jak generowanie kodu w oparciu o zasoby i reguły biznesowe, tłumaczenie reguł biznesowych na funkcje języka Java, czy wykonywanie definicji procesu, co czyni go nowoczesnym silnikiem przetwarzania procesów biznesowych. 
+
+Kogito umożliwia użycia większości istniejących narzędzi do tworzenia diagramów \bpmnnospace, aby wygenerować wykonywalny proces. Najbardziej polecanym jest użycie rozszerzenia Kogito Bundle VSCode, które zapewnia graficzny edytor procesów w Visual Studio Code, co bardzo ułatwia pracę, gdyż tym w tym samym IDE można edytować kod aplikacji - na przykład definicje usług w Javie (w przeciwieństwie do Camundy, która ma do tego dedykowany osobny program).
+
+Architekturę oprogramowania Kogito zaprezentowano na rysunku \ref{fig:kogito-architecture}. Komponent Kogito Runtime przechowuje logikę biznesową. Są tam zdefiniowane przez użytkownika usługi, które będą implementowały wymagane akcje. Widoczna na środku usługa Kafka jest używana przez Kogito do przesyłania wiadomości, a usługi Infinispan i MongoDB są używane do magazynowania i zapewnienia trwałości danych \cite{kogito-services}. Warstwa \textit{Data-Index} indeksuje informacje o zdarzeniach chmurowych z usługi Kafka do pewnego zbioru danych. Dzięki temu dołączona aplikacja Management Console ma możliwość odczytania tego, co dzieje się w systemie. Jest to graficzny interfejs użytkownika udostępniany na pewnym endpoincie służący do przeglądania stanu wszystkich usług Kogito i zarządzaniem instancjami procesów.
+
+\begin{figure}[H]
+    \includegraphics[width=0.95\textwidth,center]{img/kogito_architecture_1.png}
+    \caption{Architektura systemu Kogito \cite{kogito-architecture}}
+    \label{fig:kogito-architecture}
+\end{figure}
+
+Współdziałanie usług Trusty-Service, Trusty-Service UI oraz Explainability Service, dotyczy śledzenia wszystkich decyzji podjętych w usługach Kogito. Wszelkie dane na ten temat zapisywane są w magazynie danych Infinispan. Jest to robione, ponieważ niektóre procesy wymagają sprawdzenia, co zadziało się wcześniej, aby ustalić informacje o stanie z przeszłości. Może to być odczytane z dzięki komunikacji HTTP z odpowiednim endpointem \cite{kogito-trusty-services}.
+
+Usługa Jobs Service jest odpowiedzialna za harmonogramowanie zadań (na przykład opartych o czas), które mają zostać wykonane w pewnych określonych sytuacjach. Ta usługa jednak nie wykonuje zadań sama, tylko wysyła konkretne zapytanie REST na zadany endpoint HTTP, że należy rozpocząć wykonanie konkretnego zadania.
+
+Kogito bazuje na dobrze znanych projektach automatyzacji biznesowej, jakimi są jBPM oraz Drools. Ten pierwszy jest zestawem narzędzi przeznaczonym do budowania aplikacji biznesowych automatyzujących procesy i decyzje biznesowe - jest to usługa wykonująca procesy. Drugi projekt, Drools, to system zarządzania regułami biznesowymi, który zapewnia podstawowy silnik przetwarzania reguł biznesowych i obsługę modeli decyzyjnych - takich jak na przykład dedykowany dla \bpmn język DMN.
+
+\newpage
+Jak widać Kogito to orkiestrator, który łączy wiele otwartoźródłowych usług tworząc system przeznaczony do wykonywania procesów biznesowych. Pozwala on zintegrować całość z własnymi mikrousługami oraz udostępnia wygodny interfejs graficzny do zarządzania procesami. Jest on przeznaczony do uruchamiania w chmurze i wdrażania na platformę Kubernetes\footnote{Kubernetes – stworzona przez Google w 2014. roku, obecnie otwartoźródłowa, platforma przeznaczona do automatyzacji i skalowania aplikacji kontenerowych \cite{wiki-k8s}. Są to aplikacje, których komponenty uruchamiane są w wirtualnych zasobnikach, tak zwanych kontenerach, które mieszczą część aplikacji wraz z zestawem zależności niezbędnych do uruchomienia kodu.}.
+
+
+\section{Skalowanie systemów}
+
+W różnych sytuacjach i zastosowaniach wykonanie procesu może przyjmować skrajne zużycie czasu i pamięci. Niektóre procesy mogą być bardzo krótkie, bo przykładowo mają przenieść tylko plik do innego miejsca na dysku, inne mogą zajmować dużo czasu i pamięci, gdy na przykład analizują ogromne zbiory danych i komunikują się z zewnętrznymi usługami czekając na odpowiedź od nich. Ponadto, częstą sytuacją jest wywołanie wielu instancji procesu jednocześnie. Aby udźwignąć natężenie zadań do wykonania, które może zmieniać się też w czasie, silniki procesów biznesowych oferują mechanizmy skalowania.
+
+Istnieją dwa podejścia na poprawianie wydajności. Pierwsze z nich to skalowanie wzwyż (ang. \textit{scale up}), które polega na poprawianiu wydajności jednostki wykonującej zadanie - na przykład konkretnej maszyny. Może być to zakup lepszego procesora albo zwiększenie pamięci RAM. Należy jednak pamiętać, że w takiej strategii istnieją naturalne problemy wynikające z ograniczeń sprzętowych i tego na co pozwala fizyka w obecnych czasach. Należy również zauważyć, że używanie jednej maszyny jest zagrożone spadkiem dostępności usług, ponieważ w przypadku awarii maszyny cały system jest niedostępny. Drugie podejście to skalowanie wszerz (ang. \textit{scale out}), czyli zwiększanie ilości jednostek wykonujących zadania. Co prawda eliminuje to problem dostępności systemu w przypadku awarii jednej z maszyn, jednak pojawiają się następne, związanych na przykład z utrzymaniem spójności danych pomiędzy jednostkami wykonującymi czy zwiększony czas potrzebny na komunikację pomiędzy osobnymi wykonawcami zadań.
+
+W kontekście procesów biznesowych, nawet jeśli uda się mieć wiele maszyn wykonujących osobno instancje procesów, to kłopotem może być skalowanie bazy danych. Camunda używa relacyjnej bazy danych, które trudno się skaluje - nawet gdyby tabele były trzymane na różnych serwerach, to częstość łączenia tabel mogłaby pogrążyć wydajność działania. Najczęściej skalowanie relacyjnych baz jest realizowane poprzez wystawianie serwera bazodanowego i jego kilku replik, które komunikują się z głównym serwerem w celu synchronizacji danych. Niestety, nie jest łatwo utrzymać spójność danych przy jednoczesnym zachowaniu dużej szybkości. Kogito używa bazy plikowej MongoDB, która jest znacznie łatwiejsza do skalowania. Zazwyczaj skalowanie bazy nierelacyjnej polega na oddelegowaniu przez Load Balancer zapytania do serwera, który zarządza konkretnym plikiem. Dzięki temu Kogito może być lepszym wyborem, dla procesów operujących na dużych zbiorach danych.
+
+Skalowanie wszerz może być zrealizowane lokalnie (ang. \textit{on-premises}) przykładowo poprzez zakupienie kolejnych serwerów. Może czasami mieć zalety, jeśli na przykład użytkownik chce wykonywać pocesy na własnych serwerach, ponieważ nie chce przesyłać poufnych danych do zewnętrznego usługodawcy. Jednak z drugiej strony jest się ograniczony do ilości zakupionych maszyn. Jeśli zapotrzebowanie na zasoby zmienia się w czasie, to często pojawia się stan, w którym 90\% zasobów jest nieużywanych, albo gdy ruch sieciowy jest tak duży, że zasoby które posiadamy nie wystarczają i system działa wolno.
+
+Innym rozwiązaniem jest skorzystanie z usług dostawców chmurowych. To, co zapewniają, to dynamiczne dostosowanie ilości działających maszyn na podstawie aktualnego zapotrzebowania. Dzieje się to poprzez udostępnianie wirtualnych maszyn na serwerach dostawcy chmurowego, które mogą prowadzić niezależne obliczenia czy wystawiać endpointy HTTP. W przykładowej sytuacji, gdy w porze obiadowej zwiększy się ilość zamówień na dowóz jedzenia i będzie trzeba wykonać więcej instancji procesów \bpmn zajmujących się koordynacją z różnymi restauracjami i dostawcami jedzenia, dostawca chmurowy udostępni więcej działających maszyn, na których będą wykonywane procesy i wydajność całego systemu nie spadnie.
+
+Do zarządzania skalującym się systemem często używany jest Kubernetes, który udostępnia zestaw narzędzi zapewniających mechanizm skalowania systemu w oparciu o procesor, pamięć i inne metryki. Opisany wcześniej silnik \bpmn Kogito, umożliwia zintegrowanie reguł biznesowych i procesu, przekształcenia w mikrousługę, a następnie wdrożenie w środowisku kontenerowym, jakim jest Kubernetes. To czyni go bardzo dobrym do zastosowań ze sporym ruchem.
+
+
+% ===== ===== CHAPTER 3 ===== =====
+\chapter{Silnik przetwarzania procesów BPMN Polokus}\label{chapter-polokus}
+
+Efektem końcowym części programistycznej tej pracy jest system Polokus. Jest to silnik przetwarzania oraz zarządzania procesami \bpmn 2.0 przygotowany dla komputerów z systemem Windows. Polokus składa się z dwóch komponentów: silnika wykonywania procesów \bpmn dalej nazywanego ,,usługą'' oraz klienta GUI dalej nazywanego ,,aplikacją''. Idea jest następująca: usługa działa w tle przez cały czas i rozpoczyna oraz wykonuje procesy zgodnie z harmonogramem, a dedykowana aplikacja do zarządzania procesami może podłączyć się do działającej usługi i monitorować procesy oraz zarządzać nimi. W tej części zostanie omówiona instalacja oraz użytkowanie programów dołączonych do pracy.
+
+\section{Instalacja i korzystanie z programu}
+
+System Polokus jest przeznaczony dla komputerów z systemem operacyjnym Windows. Można go zainstalować poprzez dedykowany instalator, bądź skompilować samodzielnie ze źródeł. Instalator został przygotowany przy pomocy oprogramowania NSIS. Rozpakowuje on pliki do wskazanego folderu oraz rejestruje Polokus Service jako Windowsową usługę.
+
+\noindent Link do repozytorium: \href{https://github.com/TheKetrab/Polokus}{https://github.com/TheKetrab/Polokus}
+
+\noindent Link do instalatora: TODO
+
+
+
+Aplikacja składa się z okna głównego i menu wyboru aktywnego widoku. Różne widoki dotyczą różnych istotnych cech programu. Najważniejszy widok to ,,Services'', który zawiera informacje o procesach przetwarzanych przez system. Pokazany jest na nim tak zwany ,,Workflow'', który jest zbiorem współpracujących procesów, a opisany w zadanym pliku XML z rozszerzeniem ,,bpmn''.
+
+\begin{figure}[H]
+    \includegraphics[width=0.95\textwidth,center]{img/AppOverview.jpg}
+    \caption{Głowny ekran aplikacji Polokus}
+    \label{fig:polokus-app}
+\end{figure}
+
+Na rysunku \ref{fig:polokus-app} przedstawiono wygląd aplikacji. Widoczne na nim numery opisują poszczególne komponenty:
+\begin{enumerate}
+\setlength\itemsep{0em}
+    \item[1.] Przycisk ,,\textit{Service}'' - otwiera widok dedykowany usłudze przetwarzającej procesy BPMN. Jest to najważniejszy widok w aplikacji.
+    \item[2.] Przycisk ,,\textit{Editor}'' - otwiera graficzny edytor procesów BPMN.
+    \item[3.] Przycisk ,,\textit{Processes}'' - Rozwija panel do przeglądania procesów w wybranym katalogu.
+    \item[3a.] Przeglądarka graficzna procesów.
+    \item[3b.] Przeglądarka tekstowa plików XML.
+    \item[3c.] Okno do zarządzania własnymi rozszerzeniami.
+    \item[4.] Przycisk ,,\textit{Settings}'' - otwiera okno do zarządzania opcjami aplikacji.
+    \item[5.] Wyświetlane definicja procesów, które widzi aplikacja.
+    \item[6.] Podgląd procesu ,,na żywo'', to znaczy jego wygląd wraz z zaznaczonymi aktualnie przetwarzanymi elementami (podświetlany w kolorze zielonym).
+    \item[7.] Widok logów, standardowe wyjście dla konkretnego \textit{Workflow}.
+    \item[8.] Wybór \textit{Workflow} (pliku bpmn), dla którego mają być wyświetlane szczegóły.
+    \item[9.] Panel z przyciskami do zarządzania procesami. Kolejno od lewej przyciski wykonują następujące akcje: dodanie nowej instancji zaznaczonego procesu, wznowienie zapauzowanej instancji procesu, zapauzowanie instancji procesu, zatrzymanie (przerwanie) instancji procesu.
+    \item[10.] Lista procesów (manualnych) dla wybranego \textit{Workflow}.
+    \item[11.] Lista instancji procesów dla wybranego \textit{Workflow} (aktywnych, zapauzowanych, zatrzymanych, zakończonych).
+    \item[12.] Lista ,,starterów'', czyli obiektów, które są przeznaczone do startowania procesów niemanualnie.
+    \item[13.] Lista ,,waiterów'', które czekają na pewną akcję, aby wznowić wykonywanie procesu w konkretnym elemencie przepływu.
+    \item[14.] Panel z dodatkowymi opcjami przeznaczonymi do sterowania procesami.
+\end{enumerate}
+
+Aplikacja może działać w dwóch trybach: lokalnie albo zdalnie. ,,Lokalnie'' oznacza, że usługa uruchamiana jest w pamięci operacyjnej i po zamknięciu okna aplikacji, przestaje działać. ,,Zdalnie'' oznacza, że usługa działa ,,gdzieś'', a aplikacja się do niej łączy, aby nią zarządzać i oglądać stan przetwarzanych przez nią procesów. Zdalna usługa może działać na tej samej maszynie (wtedy używany jest na przykład \textit{localhost}), albo na osobnej. Ustalenie trybu działania odbywa się podczas startu aplikacji i jest to konfigurowalne w pliku \emph{config.ini} przy pomocy opcji \textit{UseRemotePolokus} oraz \textit{RemotePolokusUri}.
+
+Jak wcześniej wspomniano, \textit{Workflow} to obiekt odpowiadający pojedynczemu plikowi bpmn. Obiekty te są odczytywane z konkretnego folderu wskazanego w pliku konfiguracyjnym przy starcie aplikacji. Od kiedy proces jest zamieniony z pliku bpmn na \textit{Workflow}, jest od razu aktywny, to znaczy może zostać uruchomiony automatycznie przez jakieś zdarzenie (czasowe, wiadomość, sygnał). Można uruchamiać kilka instancji pojedynczego procesu.
+
+Zachowanie obiektów czasowych definiowane jest przy użyciu ustandaryzowanych napisów w dwóch typach. Pierwsze to wyrażenia czasowe, to znaczy ,,5h 10m'' czy ,,17s 42ms'' oznaczają ,,zaczekaj 5 godzin i 10 minut'', ,,zaczekaj 17 sekund i 42 milisekundy'' zanim zaczniesz dalej wykonywać. Drugie to wyrażenia cron\footnote{\textit{Cron} - narzędzie w systemach z rodziny Unix stworzone do harmonogramowania zadań zgodnie z określonym interwałem. Najbardziej podstawowy format zapisu czasu to pięć kolejnych liczb oznaczających kolejno minutę, godzinę, dzień miesiąca, miesiąc i dzień tygodnia, gdzie gwiazdka oznacza dowolność \cite{wiki-cron}. Przykładowo ,,15 8 * * 1'' oznacza ,,w każdy poniedziałek o 8:15''.}. Polokus korzysta z biblioteki Quartz.NET i interpretuje wyrażenia zgodnie z jej standardem.
+
+\section{Informacje o programie}
+
+Program został napisany w technologii .NET 6 przy użyciu języka C\#. Zostały w nim użyte następujące zewnętrzne biblioteki: CefSharp, Google.Protobuf, Grpc, Quartz, ini-parser, Google.Apis.Gmail, Topshelf. W skład rozwiązania wchodzi sześć projektów:
+
+\begin{itemize}
+    \item Polokus.App - Aplikacja GUI w technologii Windows Forms
+    \item Polokus.Core - Biblioteka z implementacją poszczególnych komponentów i logiką działania silnika przetwarzania procesów.
+    \item Polokus.Core.Interfaces - Biblioteka z interfejsami używanymi w całym systemie. Zawiera wysokopoziomowy opis wszystkiego co może być przydatne do rozszerzania systemu.
+    \item Polokus.ExternalsExample - Biblioteka demonstrująca rozszerzanie silnika systemu o własne akcje. Znajdują się tam między innymi przykłady klienta monitorującego wskazany folder i klienta monitorującego skrzynkę mailową GMail.
+    \item Polokus.Service - Program konsolowy działający w trybie serwera, który zawiera silnik przetwarzania procesów \bpmn i umożliwia zdalne sterowanie nim za pomocą technologii gRPC\footnote{gRPC (\textit{gRPC Remote Procedure Calls}) - technologia do zdalnego wywoływania procedur stworzona przez Google i opublikowana jako otwartoźródłowa w 2015. roku. Wykorzystuje protokół HTTP/2 do transportu danych, które są kodowane w plikach Protocol Buffers (protobuf) \cite{wiki-grpc}.}.
+    \item Polokus.Tests - Zestaw testów jednostkowych.
+\end{itemize}
+
+ Wielkość całego rozwiązania zmierzona przy użyciu programu cloc-1.96 \cite{cloc} została udokumentowana na rysunku~\ref{fig:cloc}.
+
+\begin{figure}[H]
+    \includegraphics[width=0.95\textwidth,center]{img/cloc.png}
+    \caption{Wynik analizy kodu za pomocą programu cloc}
+    \label{fig:cloc}
+\end{figure}
+
+% ===== ===== CHAPTER 4 ===== =====
+\chapter{Implementacja silnika}\label{chapter-implementation}
+W tym rozdziale opisano architekturę, główne koncepty i struktura działania systemu Polokus. Najpierw zostanie zdefiniowane kilka podstawowych pojęć:
+\begin{itemize}
+    \setlength\itemsep{0em}
+    \item Plik bpmn - plik XML zawierający definicję procesów wraz z ich graficznym przedstawieniem, standaryzowany przez Object Management Group,
+    \item Proces \bpmn - obiekt reprezentujący pojedynczy węzeł \emph{bpmn:process} w pliku bpmn. Zawiera informacje o strukturze grafu procesu wraz z typami poszczególnych wierzchołków,
+    \item Instancja procesu - obiekt reprezentujący działający pojedynczy proces. W programie może działać jednocześnie wiele niezależnych od siebie instancji tego samego procesu \bpmnnospace,
+    \item \textit{Workflow} - jest to obiekt reprezentujący pojedynczy plik bpmn. Jest odpowiedzialny za zarządzanie zdefiniowanymi procesami, to znaczy uruchamianiem instancji procesów, reagowaniem na pewne zdarzenia (np. czasowe), czy przetrzymywaniem historii o wykonanych procesach.
+\end{itemize}
+
+Schemat architektury całego systemu został przedstawiony na rysunku \ref{fig:polokus-architecture}. Usługa, do której łączy się aplikacja, może działać na tym samym komputerze lub całkowicie zdalnie, a komunikacja odbywa się wówczas przez sieć. Na schemacie pokazano cztery główne interfejsy usługi do komunikacji. Procesy są wczytywane jako pliki bpmn z systemu plików. Zdarzenia czasowe bazują na zegarze systemowym. Wiadomości między procesami wykorzystują \textit{localhost} do komunikacji - wysyłają pewne żądania na odpowiedni port, co sygnalizuje przyjście wiadomości. Monitory to zdefiniowane przez użytkownika obiekty, które nasłuchują na konkretne zdarzenia i w razie potrzeby wywołują sygnał. Na diagramie pokazano również, że mogą komunikować się przez sieć z całkowicie zdalną usługą (na przykład serwerem poczty) i implementować swoją logikę.
+
+\begin{figure}
+    \includegraphics[width=0.9\textwidth,center]{img/SystemArchitecture.png}
+    \caption{Architektura systemu Polokus}
+    \label{fig:polokus-architecture}
+\end{figure}
+
+\section{Parsowanie plików bpmn}
+Struktura pliku XML opisującego proces \bpmn, składa się z węzłów poprzedzonych przestrzenią nazw (ang. \textit{namespace}) bpmn. Jeden plik bpmn, parser zamienia na obiekt typu \textit{Workflow}.  Aby poprawnie wykonać cały proces, silnik musi najpierw wczytać taki plik i przetworzyć jego zapis na logiczną strukturę grafu. Wierzchołkami są różne obiekty, są też ,,pseudoelementy'' (jak adnotacje albo definicje wiadomości); niektóre mają wpływ na interpretacje procesu, inne służą tylko poprawie jego wizualizacji. W pliku bpmn zapisana jest również graficzna reprezentacja procesu (bpmndi), mówiąca o kształtach i pozycjach odpowiednich wierzchołków - w procesie parsowania jest to ignorowane, gdyż nie ma to wpływu na wykonanie procesu.
+
+Każdy wierzchołek posiada właściwości \textit{,,id''} oraz \textit{,,name''}. Konkretne wierzchołki są mapowane na obiekty typu generycznego \emph{FlowNode$<$T$>$}, gdzie zapisujemy typ bazowy węzła, z którego powstał. Następnie dla każdego procesu, dla każdej z sekwencji (bpmn:sequenceFlow), czyli krawędzi w grafie, tworzymy połączenie między dwoma odpowiednimi wierzchołkami. Przykładowo, dla:
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+  %$<$%bpmn:task id="A"/%$>$%
+  %$<$%bpmn:task id="B"/%$>$%
+  %$<$%bpmn:sequenceFlow id="E" sourceRef="A" targetRef="B" /%$>$%
+\end{lstlisting}
+\end{minipage}
+
+\noindent utworzymy dwa obiekty typu \textit{TaskNode} $a$ i $b$, takie że: $$a.Outgoing = \{b\},\ b.Incoming = \{a\}.$$
+
+\textit{Workflow} może mieć wiele procesów, a każdy z nich może mieć podprocesy (ang. \textit{subprocess}). Są parsowane rekurencyjnie biorąc cały wierzchołek \textit{bpmn:process} lub \textit{bpmn:subprocess} i wszystkie jego dzieci. Parser dba również o ustanowienie połączeń linii wiadomości pomiędzy odpowiednimi wierzchołkami lub procesami, które są zdefiniowane w węźle \textit{bpmn:collaboration}.
+\newpage
+
+\section{Obsługa elementów przepływu}
+Wykonywanie procesu to przechodzenie po grafie. Wierzchołki mają różne typy, a więc wykonanie ich różni się od siebie. Wykonanie poszczególnego wierzchołka będziemy oddelegowywać do osobnego obiektu: \textit{NodeHandler}. W systemie Polokus, dla każdego wierzchołka zdefiniowany został konkretny \textit{NodeHandler} wykonujący go. Wykonanie wierzchołka to wykonanie pewnej akcji oraz ustalenie jednej lub kilku dalszych sekwencji wyjściowych (czyli tych, którymi ma kontynuować proces) zgodnie z semantyką dla danego typu wierzchołka. Przykładowo: \textit{ExclusiveGatewayHandler} bazując na stanie procesu (wartościach zmiennych) wybierze do wykonania pierwszą sekwencję, którą uda mu się obliczyć do wartości \textit{true} i zwróci ją jako sekwencję do dalszego wykonania procesu.
+
+Do realizacji zadań poszczególnych obiektów \textit{NodeHandler} często nie wystarcza proste sprawdzanie warunków. Niejednokrotnie proces musi czekać (być może długo) na zewnętrzny sygnał, by kontynuować wykonanie. Do tego system Polokus wykorzystuje mechanizm \textit{,,Waiterów''} i \textit{,,Starterów''}. Są to obiekty mające na celu nasłuchiwanie (zupełnie niezależnie od działania procesu) pewnych sygnałów i w razie gdy zajdzie taka potrzeba, zażądać od \textit{NodeHandlera}, żeby kontynuował wykonywanie procesu.
+
+Przykładem mogą być wierzchołki typu \textit{Intermediate Catching Message Event}, czyli te, oczekujące na nadejście wiadomości. Gdy wykonanie procesu natrafia na taki \textit{NodeHandler}, zostaje utworzony \textit{Waiter} zadanego typu, który ma nasłuchiwać na odpowiednie zdarzenie. \textit{NodeHandler} natychmiast zwróci status \textit{,,suspension''}, czyli że wykonanie go zostało zawieszone. Proces ruszy dopiero gdy odpowiedni \textit{Waiter} przekaże do \textit{NodeHandlera} informację o tym, że otrzymano pewną wiadomość. Podobnie działa to dla procesów zaczynających się w momencie pewnego zdarzenia. Przykładowo, jeśli w pliku bpmn zdefiniowano proces, który zaczyna się pewnym zdarzeniem sterowanym czasem, to po sparsowaniu do \textit{Workflow} zostaje dodany \textit{Starter}, czyli obiekt, który nasłuchuje i w razie gdy zajdzie taka potrzeba, rozpoczyna nowy proces.
+
+\begin{figure}[H]
+    \includegraphics[width=0.75\textwidth,center]{img/ExampleProcessStarter.jpg}
+    \caption{Przykład \textit{Startera} dla procesu}
+    \label{fig:process-example-starter}
+\end{figure}
+
+Na rysunku \ref{fig:process-example-starter} pokazano przykładową sytuację, w której \textit{Time Manager} ma za zadanie o 16:00 każdego dnia uruchomić instancję procesu PrA. \textit{Time Manager} wie, że ma to zrobić, ponieważ parser dodał obiekt \textit{Starter}, który nasłuchuje na odpowiedni moment w czasie przy użyciu standardowej notacji \textit{crone}. W tym przykładzie, codziennie o godzinie 16:00, uruchomiony zostaje proces, który ma za zadanie zapisać (za pomocą \textit{Service Task} ,,Log active users'' zdefiniowanego przez użytkownika) informacje o zalogowanych użytkownikach na danym komputerze.
+
+Operacja wykonania pojedynczego \textit{NodeHandlera}, funkcja \textit{Execute}, została zapisana następującym pseudokodem:
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+  func Execute(caller) %\{%
+    if not (CanProcess(caller)
+        return SUSPENSION;
+
+    AddWaitersForBoundaryEvents();
+    var resultInfo = Process(caller);
+    RemoveWaitersForBoundaryEvents();
+    return resultInfo;  
+  %\}%
+\end{lstlisting}
+\end{minipage}
+
+Przyjmowany argument \textit{caller} to poprzednik w wykonywaniu procesu, który wywołuje konkretny obiekt przepływu. Może być to obiekt \textit{FlowNode}, \textit{Starter} albo \textit{Waiter}. Przykładem zastosowania, gdzie przydaje się obiekt wywołujący, jest implementacja bramki równoległej łączącej (\textit{Parallel Gateway NodeHandler}), który przepuszcza proces dalej, dopiero gdy wszystkie sekwencje wchodzące się zakończą. Logika działania jest następująca: w metodzie \textit{CanProcess} odpowiedni \textit{NodeHandler} zapisuje Id wierzchołka wywołującego, jeśli wszystkie wierzchołki poprzedzające zostały dodane do kolekcji, to metoda zwróci wartość \textit{true}, w przeciwnym przypadku zwróci \textit{false} a metoda \textit{Execute} \textit{'SUSPENSION'}, to znaczy \textit{NodeHandler} będzie czekał na kolejne elementy przepływu, które go wywołają.
+
+Jeśli \textit{CanProcess} zwróci \textit{true}, to w metodzie \textit{AddWaitersForBoundaryEvents} zostaną utworzone specjalne obiekty nasłuchujące na pewne zdarzenia dla wszystkich zdarzeń brzegowych dla przetwarzanego obiektu przepływu. Metoda \textit{Process} jest implementowana przez konkretny typ dziedziczący po typie \textit{NodeHandler$<$T$>$} i ma za zadanie wybrać sekwencje wychodzące, które mają zostać uruchomione. Przykładowa implementacja dla \textit{NodeHandlera} dla bramki \textit{Inclusive Gateway} może wyglądać następująco:
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+  func Process(caller) %\{%
+    valid = []
+    foreach (s in this.outgoing)
+      if (IsValidSequence(s)
+        then valid.append(s)
+    if (valid.Length %$>$% 0)
+        return SUCCESS(valid)
+    else if (this.defaultSequence != null)
+        return SUCCESS(this.defaultSequence)
+    else
+        return FAILURE  
+  %\}%
+\end{lstlisting}
+\end{minipage}
+
+Taka implementacja jest zgodna z semantyką bramki \textit{Inclusive}, to znaczy: jeśli warunki na kilku wychodzących krawędziach są prawdziwe, to należy uruchomić jednocześnie je wszystkie; jeżeli żaden nie jest prawdziwy, to należy uruchomić domyślną wychodzącą sekwencję.
+
+Po uzyskaniu wyniku, wiadomo które sekwencje należy uruchomić. Stanie się to, chyba że wystąpiło któreś ze zdarzeń brzegowych, które powinny zostać obsłużone (zdarzenia brzegowe przerywające mogą również anulować zwrócenie obliczonych sekwencji do dla dalszego przetwarzania), a jeśli nie zostały wywołane, to usunięte, ponieważ wraz z opuszczeniem \textit{NodeHandlera} system nie powinien już na nie nasłuchiwać.
+
+
+\section{Skrypty}
+Aby zapewnić mechanizm warunków i ,,programowania'' procesu przez użytkownika, oprócz \textit{Service Tasks} (wykonujących pewien podprogram), system Polokus wprowadza prosty język skryptowy. Skrypty w procesie mają 3 podstawowe zastosowania:
+\begin{enumerate}
+    \typicalVerticalSpace
+    \item Wykonywanie pewnych zadań za pomocą \textit{Script Tasks}.
+    \item Ewaluacja warunków na krawędziach wychodzących z bramek.
+    \item Przesyłanie wraz z wiadomościami wartości zmiennych.
+\end{enumerate}
+
+Zmienne globalne to zmienne widoczne dla całej instancji procesu. Każda zmienna globalna jest oznaczana symbolem ,,\$'' (np. \$var\_1) i jest typowana dynamicznie. Możemy również używać zmiennych lokalnych w standardowy sposób: int x = 1;. Są one jednak widoczne tylko w pojedynczym bloku. Od strony technicznej wygląda to tak, że przetrzymywany jest słownik ,,\textit{globals}'' zmiennych typowanych dynamicznie (\textit{dynamic}) nazwa $\rightarrow$ wartość. System Polokus do skryptów domyślnie używa języka JavaScript i jest obsługiwany przy użyciu biblioteki Jint (JavaScript Interpreter). Umożliwia to szybkie obliczanie różnych warunków. Właściwe użycie skryptów pokazano na rysunku \ref{fig:process-example-scripts}.
+
+\begin{figure}[H]
+    \includegraphics[width=0.75\textwidth,center]{img/ScriptingExample.png}
+    \caption{Przykład używania skryptów w procesie}
+    \label{fig:process-example-scripts}
+\end{figure}
+
+Do wykonywania bardziej złożonych akcji dostępna jest również opcja skorzystania z języka \cs, co należy zmienić w pliku konfiguracyjnym \textit{config.ini}. Dzięki temu możemy używać metod ze standardowej biblioteki, robić zaawansowane warunki z użyciem LINQ (na przykład: \$b = \$x.Contains('b');). Skrypty w \cs\ są obsługiwane przy użyciu klasy ,,CSharpScript'' dostępnej w środowisku .NET, która kompiluje dostarczony kod a następnie dynamicznie dołącza wygenerowane \textit{assembly} wraz z wszystkimi potrzebnymi bibliotekami. Niestety, ,,CSharpScript'' nie umożliwia odłączania i usuwania bibliotek, które już nie są potrzebne, więc używanie systemu skryptów w języku \cs\ nie jest zalecane, gdy spodziewa się wielu instancji procesu. Podczas przeprowadzania testów wydajnościowych zauważono, że użycie klasy ,,CSharpScript'' do skryptów jest bardzo niewydajne. Po pierwsze generowanie kodu i załączanie bibliotek długo trwa, a po drugie z uwagi na brak możliwości odłączania bibliotek w wybranym czasie, pojawiał się niekontrolowany wzrost pamięci RAM używanej przez system Polokus, gdy przetwarzano wiele skryptów jednocześnie. Aby to ograniczyć użyto semafora, który ma kontrolować ilość jednocześnie wykonywanych skryptów w języku \cs. Po zakończeniu ewaluacji skryptu wysyłana jest prośba do Garbage Collectora o zwolnienie nieużywanych zasobów i zwalniana jest jedna blokada semafora.
+
+\section{Obsługa awarii}
+
+W większości programów zależy nam na spójności danych pomimo wystąpienia awarii. Przykładem mogą być silniki baz danych, które muszą potrafić wycofać niezatwierdzone transakcje, gdy proces został zabity. Silnik wykonywania procesów, po awarii, powinien kontynuować procesy, które trwały w momencie jej wystąpienia.
+
+Środowisko .NET umożliwia przechwytywanie zdarzenia zamykania programu (\textit{event AppDomain.CurrentDomain.ProcessExit}), które najczęściej jest świadome i wywoływane przez użytkownika. \textit{Handler} jest wykonywany gdy zamkniemy okno programu lub zabijemy proces za pomocą menadżera zadań lub konsoli przez polecenie \textit{kill}. Nie ma natomiast możliwości przechwycenia zdarzenia nagłego wyłączenia komputera (na przykład z powodu braku prądu). Nawet gdyby istniał taki mechanizm, to ilość czasu na ,,posprzątanie'' byłaby krótka, co często nie wystarczyłoby na serializację stanu. Współczesne programy (na przykład pakiet Microsoft Office) umożliwiają przywrócenie (ang. \textit{recovery}) stanu - również niezapisanych zmian.
+
+W systemie Polokus zaimplementowano zapis stanu procesu, aby później móc go wznowić. Proces może zostać przerwany ręcznie przez użytkownika lub przez niezależne zdarzenie zewnętrzne. Aby móc wznowić proces, obiekt typu ProcessInstance zostaje zserializowany do lekkiego obiektu \textit{ProcessInstanceSnapShot}. Przetrzymuje on stan potrzebny do wznowienia procesu, tzn informacje takie jak: ID procesu \bpmn, aktywnie wykonywane wierzchołki przepływu czy aktywne ,,Waitery''. Podczas zapauzowania instancji procesu, jest ona zatrzymywana, a jej stan serializowany do \textit{snapshota} i zapisywany na liście zapauzowanych procesów. Aby poradzić sobie z sytuacją, w której proces jest zabijany i trzeba zapisać stan o procesach, jak wcześniej wspomniano, wstrzykiwanie się do zdarzenia zamykania aplikacji nie wystarczy. Aby rozwiązać problem z potencjalnym brakiem prądu, został zaimplementowany \textit{Hooks Provider: StateSerializerHooks}. Zapisuje on nowy, świeży \textit{snapshot} do pliku, przed rozpoczęciem procesu w ustalonym folderze \%AppData\%/Polokus/ProcessInstances i kasuje ten plik w zdarzeniu \textit{OnProcessFinished}. Dzięki temu, podczas włączenia aplikacji, wiemy, że istniejące w tym folderze pliki odpowiadają przerwanym procesom i możemy je wznowić.
+
+\section{Rozszerzalność systemu}
+Bardzo ważną cechą silnika \bpmn jest dostosowywanie go do własnych potrzeb. Dwie najważniejsze rzeczy to definiowanie własnych \textit{Service Tasks}, tak żeby działy się akcje żądane przez użytkownika, oraz automatyczne wywoływanie procesów w momentach zdefiniowanych przez użytkownikach. Polokus umożliwia oba przypadki rozszerzeń.
+
+Zdefiniowanie własnego \textit{Service Task} odbywa się poprzez implementację własnej klasy dziedziczącej po klasie abstrakcyjnej \textit{ServiceTaskNodeHandlerImpl}, a następnie podpięcie odpowiedniej nazwy \textit{Service Task} do zdefiniowanej klasy. Dziedzicząc po klasie \textit{ServiceTaskNodeHandlerImpl} ma się dostęp do obiektu \textit{Parent}, który jest \textit{NodeHandlerem}, a więc ma się dostęp do wszystkich przydatnych informacji o procesie (np. dane instancji procesu, czy \textit{Workflow}) oraz można wykonywać udostępniane przez interfejs \textit{INodeHandler} metody, jak chociażby przerwanie wykonywania procesu.
+
+Rejestracja własnej klasy do systemu odbywa się za pomocą pliku externals.json. Należy podać ścieżkę do pliku DLL, który będzie załadowany, pełną ścieżkę klasy oraz nazwę \textit{Service Task} - będzie to napis, taki że jeśli się pojawi w diagramie procesu na obiekcie \textit{Service Task}, to zostanie wywołana pod spodem metoda \textit{Run} zdefiniowanej klasy \textit{ClassName}. Przykładowy rejestrator wygląda w następujący sposób:
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+  "ServiceTasks": [
+    %\{%
+      "Assembly": "path_to_assembly/assembly.dll",
+      "ClassName": "FullClassPath.MyCustomService",
+      "ServiceTaskName": "MyCustomServiceTaskNodeHandler"
+    %\}%
+  ]
+\end{lstlisting}
+\end{minipage}
+
+Rozszerzanie systemu o własne startery zostało wykonane przy użyciu zdefiniowanych w \bpmn zdarzeniach typu \textit{Signal}. Semantycznie sygnały oznaczają, że coś się stało i należy wykonać pewną akcję. Polokus może dynamicznie zarejestrować obiekty implementujące interfejs \textit{IMonitor}. \textit{Monitor} to w zamyśle obiekt, który działa cały czas w tle i monitoruje, czy coś się stało - jeśli tak, to za pomocą dostępu do obiektu \textit{PolokusMaster} może wywołać sygnał, który silnik przechwyci i podejmie odpowiednie akcje. Rejestracja własnego obiektu monitorującego wygląda bardzo podobnie do rejestrowania \textit{Service Task}, to znaczy podaje się ścieżkę do \textit{assembly} oraz pełną nazwę klasy:
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+  "Monitors": [
+    %\{%
+      "Assembly": "path_to_assembly/assembly.dll",
+      "ClassName": "FullClassPath.MyMonitor",
+      "Arguments": [ "arg1", "arg2" ]
+    %\}%
+  ]
+\end{lstlisting}
+\end{minipage}
+
+ Istotnym parametrem jest ,,\textit{Arguments}'' - podczas dynamicznego rejestrowania obiektów monitorujących stosowana jest konwencja, że pierwszym argumentem konstruktora musi być instancja \textit{IPolokusMaster} (obiektu do którego rejestrowany jest monitor), a kolejne to argumenty typu \textit{string}. Obiekt \textit{Monitor} ma wtedy dostęp do silnika, a więc może wysyłać sygnały, które będą startować procesy albo zarządzać nimi, jeśli będzie nasłuchiwał jakiś \textit{Waiter}. Użyteczne przykłady zostały dołączone w kodzie w przykładach: obiekt monitorujący strukturę folderów i pliku we wskazanym folderze oraz obiekt monitorujący skrzynkę pocztową GMail i emitujący sygnałami gdy dostanie się maila.
+
+% ===== ===== CHAPTER 6 ===== =====
+\chapter{Testy}\label{chapter-tests}
+Aby poświadczyć poprawności działania załączonej implementacji, został przeprowadzony szereg różnych testów, które potwierdzają działanie zgodne z semantyką zdefiniowaną w standardzie \bpmn.
+
+\section{Testy jednostkowe i integracyjne}
+Każdy typ obiektu przepływu ma zdefiniowaną semantykę. Aby upewnić się, że silnik zachowuje się podczas ich wykonania zgodnie ze standardem, zostały dostarczone odpowiednie testy jednostkowe sprawdzające poprawność wykonania pojedynczych obiektów \textit{NodeHandler}. Z uwagi na to, że przetestowanie poprawnego wykonania procesu nie jest trywialne, sposób testowania zasługuje na słowo komentarza.
+\begin{figure}[H]
+     \centering
+     \begin{subfigure}[b]{0.59\textwidth}
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+ var p = readBpmn(file)
+ var visitor = new Visitor();
+ p.registerHooksProvider(visitor);
+ p.run()
+ assert.areEqual(
+   "start;tScriptTask;exclusive;end3",
+   visitor.log())
+\end{lstlisting}
+\end{minipage}
+        \caption{Pseudokod testu}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.39\textwidth}
+         \centering
+         \includegraphics[width=.9\textwidth]{img/exclusiveTest.jpg}
+        \caption{Proces}
+     \end{subfigure}
+        \caption{Przykładowy test jednostkowy}
+        \label{fig:unit-test}
+\end{figure}
+
+
+
+Używany jest specjalny obiekt nazywany \textit{visitor}. Jego zadaniem jest logowanie nazwy odwiedzanego obiektu przepływu, dzięki czemu po zakończeniu procesu w logu zawarta jest ścieżka odwiedzonych wierzchołków w odpowiedniej kolejności. Rysunek \ref{fig:unit-test} przedstawia jeden z testów jednostkowych, który sprawdza poprawność wykonania bramki \textit{Exclusive Gateway}. Widać na nim posty proces \bpmnnospace, oraz pseudokod przedstawiający test jednostkowy. Najpierw wczytywana jest definicja procesu i tworzona instancja, następnie rejestrowany jest \textit{visitor}, instancja zostaje uruchomiona i na końcu asercja sprawdza, czy wykonanie odwiedziło oczekiwane wierzchołki.
+
+
+Oprócz testów jednostkowych weryfikujących poprawność działania pojedynczych elementów, załączone jest również kilka testów integracyjnych, czyli dużych procesów, które mogłyby być tworzone przez użytkowników. Sprawdzana jest poprawność wykonywanych przez nie akcji.
+
+Pierwszy, który przedstawiono na rysunku \ref{fig:integration-grading} dotyczy systemu wpisywania ocen podczas przepytywania studentów. Ponieważ jest to test automatyczny, wszystkie zadania, które w procesie byłyby typu \textit{User Task} zastąpiono odpowiadającymi zautomatyzowanymi zadaniami typu \textit{Service Task}. Test przedstawia scenariusz, w którym nauczyciel wybiera jednego z trzech najgorszych studentów, ustala pytanie dla niego, a następnie czeka na odpowiedź studenta przez 3 sekundy. Jeśli student odpowie dobrze, to do jego ocen dopisywana jest ocena 5, jeśli źle albo zajmie mu to dłużej niż 3 sekundy, to do jego ocen dopisywana jest ocena 2. W tym teście testowana jest komunikacja pomiędzy dwoma aktorami procesu, poprawność wykonywania zadań \textit{Service Task} oraz czasowego zdarzenia brzegowego.
+
+\begin{figure}[h]
+     \centering
+     \includegraphics[width=\textwidth]{img/Integration_GradingStudent.jpg}
+     \caption{Test integracyjny: Ocenianie studentów}
+     \label{fig:integration-grading}
+\end{figure}
+
+Kolejny test integracyjny sprawdza poprawność użycia systemu Polokus jako automat do zarządzania plikami. Definicję procesu pokazano na rysunku \ref{fig:integration-segregation}. Do testu używany jest obiekt monitorujący wskazany folder (\textit{FileMonitor}, znajdujący się w rozszerzeniach dołączonych w projekcie Polokus.ExternalsExample), który ma przechwytywać zdarzenie pojawienia się w nim nowego pliku. Test polega na wklejeniu do konkretnego folderu 200 plików o różnym rozmiarze i sprawdzeniu, czy silnik \bpmn przenosi je do odpowiednich folderów segregując na dłuższe i krótsze pliki. Podczas tego testu integracyjnego, silnik tworzy 200 instancji tego procesu, każdą dla pojedynczego pliku tekstowego, następnie każdy zostaje przeanalizowany i przeniesiony w odpowiednie miejsce.
+
+\begin{figure}[h]
+     \centering
+     \includegraphics[width=.9\textwidth]{img/Integration_FileSegregation.jpg}
+     \caption{Test integracyjny: segregowanie plików}
+     \label{fig:integration-segregation}
+\end{figure}
+
+
+
+
+\section{Testy zgodności}
+
+Standard \bpmn 2.0 jest bogaty w różnego rodzaju obiekty i mechanizmy. Załączona implementacja nie wspiera jego wszystkich cech. Skoncentrowano się na dostarczeniu funkcjonalności opisywanej jako warstwa pierwszego poziomu oraz na elementach, które autor uważał za istotne. Na rysunku \ref{fig:features} załączono spis elementów \bpmn wraz z informacją, czy są one wspierane przez system Polokus.
+
+Warto zaznaczyć, że nie wszystkie komercyjne silniki procesów biznesowych dostarczają pełne wsparcie dla wszystkich elementów \bpmn 2.0. Przykładowo omawiany w rozdziale \ref{chapter-programs} silnik Kogito nie wspiera obiektów przepływu wysyłających sygnały oraz zadań typu \textit{Send Task} i \textit{Receive Task}.
+
+\section{Testy wydajnościowe}
+
+Komercyjne programy do wykonywania procesów są często poddawane wysokim obciążeniom, na przykład gdy o pewnej godzinie w ciągu dnia wzrasta zapotrzebowanie na pewną usługę. System Polokus został poddany również testom wydajnościowym, aby sprawdzić jak radzi sobie z dużym obciążeniem.
+
+Testy były wykonywane na dwóch różnych procesach. Na rysunku \ref{process-simple} pokazano pierwszy z nich - prosty proces. Jego celem jest ,,zastygnąć'' na jedną sekundę. Dzięki temu sprawdzane było, jak zachowuje się system, gdy będzie wykonywać kilkaset a nawet kilka tysięcy instancji procesów jednocześnie.
+
+\begin{figure}[h]
+     \centering
+     \includegraphics[width=.5\textwidth]{img/plots/processSimple.jpg}
+     \caption{Proces prosty}
+     \label{process-simple}
+\end{figure}
+
+Drugi proces, który pokazano na rysunku \ref{process-advanced}, miał na celu sprawdzenie, czy system nie doznaje zbyt dużych dodatkowych obciążeń, gdy instancja procesu wymaga pewnych akcji - w tym przypadku jest to pobranie aktualnej sekundy oraz wylosowanie liczby i wybranie odpowiedniej ścieżki przepływu w zależności od parzystości otrzymanych liczb.
+
+\begin{figure}[h]
+     \centering
+     \includegraphics[width=\textwidth]{img/plots/processAdvanced.jpg}
+     \caption{Proces złożony}
+     \label{process-advanced}
+\end{figure}
+
+Dla każdego z procesów została zbadana zużywana pamięć operacyjna oraz czas wykonania wszystkich instancji procesów. Przebieg testu wyglądał następująco: do wybranego silnika przetwarzania procesów \bpmn została wysłana prośba o wykonanie $n$ instancji danego procesu; następnie mierzone było największe zużycie pamięci RAM w czasie wykonywania zadania oraz czas; taki pojedynczy test wykonywany był pięć razy a wartości zostały uśrednione i pokazane na wykresach wydajności dla różnych $n$.
+
+Aby sprawdzić, jak system Polokus wypada na tle innych silników, te same testy przeprowadzono dla opisanych w rozdziale \ref{chapter-programs} programów. Wszystkie testy były wykonywane na laptopie Lenovo Thinkpad L14 z procesorem AMD Ryzen 5 PRO 4650U 2.1 GHz. Rysunek \ref{fig:mem} przedstawia otrzymane wartości maksymalnej zużywanej pamięci RAM, a rysunek \ref{fig:time} przedstawia jak długo wykonywały się procesy na różnych silnikach.
+
+\begin{figure}[H]
+     \centering
+     \begin{subfigure}[b]{0.49\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{img/plots/simpleMem.png}
+         \caption{proces prosty}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.49\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{img/plots/advancedMem.png}
+         \caption{proces złożony}
+         \label{fig:mem-adv}
+     \end{subfigure}
+        \caption{Zużycie pamięci}
+        \label{fig:mem}
+\end{figure}
+
+\begin{figure}[H]
+     \centering
+     \begin{subfigure}[b]{0.49\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{img/plots/simpleTime.png}
+         \caption{proces prosty}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.49\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{img/plots/advancedTime.png}
+         \caption{proces złożony}
+         \label{fig:time-adv}
+     \end{subfigure}
+        \caption{Czas wykonania}
+        \label{fig:time}
+\end{figure}
+
+Po przeprowadzeniu testów można wysnuć kilka wniosków. Przede wszystkim Polokus najlepiej radzi sobie w porównaniu z innymi, gdy instancji procesów jest bardzo mało. Stosunek czasu wykonania do ilości procesów zgodnie z przewidywaniem jest w przybliżeniu liniowy. Podczas przeprowadzania testów zauważono również, że w przeciwieństwie do systemu Polokus, pozostałe silniki w jakiś sposób harmonogramują ilość jednocześnie wykonywanych instancji. Liniowości nie widać w zużyciu pamięci - prawdopodobnie spowodowane jest to harmonogramowaniem procesów przez silniki i zwalnianiem pamięci po wykonaniu części instancji procesów. Na rysunku \ref{fig:mem-adv} widać, że w silniku Camunda do wniosków o 100 instancji procesów pamięć rosła, a już przy wniosku o 200 instancji, maksymalne zużycie pamięci było mniejsze - być może dlatego, że jednocześnie było uruchomione mniej procesów. System Polokus nie posiada komponentu dedykowanego do harmonogramowania, przez co uruchamia wszystkie zadane instancje jednocześnie. Pozostałe systemy uruchamiają kolejne procesy, dopiero gdy mają na to wystarczające zasoby. Wykres przedstawiający tę obserwację przedstawiono na rysunku \ref{fig:scheduling}. Test składał się z uruchomienia prostego procesu przedstawionego na rysunku \ref{process-simple} 2000 razy i badaniu ilości aktywnych instancji. Widać na nim, że Kogito przetwarza maksymalnie około 250 instancji, a Camunda maksymalnie około 100 - oczywiście, gdy część z nich skończy od razu uruchamiane są następne. Tymczasem Polokus już na starcie uruchamia wszystkie zadane instancje, co niekoniecznie jest optymalne ze względu konkurencji o zasoby przez różne wątki.
+
+\begin{figure}[h]
+     \centering
+     \includegraphics[width=.7\textwidth]{img/plots/scheduling.png}
+     \caption{Harmonogramowanie instancji procesów}
+     \label{fig:scheduling}
+\end{figure}
+
+\newpage
+\begin{figure}[H]
+    \includegraphics[width=1.05\textwidth,center]{img/content.png}
+    \caption{Zaimplementowane featury \bpmn 2.0}
+    \label{fig:features}
+\end{figure}
+
+% ===== ===== CHAPTER 7 ===== =====
+\chapter{Podsumowanie}
+W tej pracy przyjrzano się procesom \bpmnnospace, ich zastosowaniu w biznesie zarówno w oglądzie na działanie pewnych akcji - ogólny widok na diagram, oraz koncepcji ich automatyzacji, czyli ich wykonywania przez silnik. Przeglądając wybrane implementacje programów dedykowanych do projektowania i wykonywania procesów \bpmn przyjrzano się cechom, które wydają się wartościowe dla użytkowników końcowych.
+
+Część programistyczna zawiera własną implementację programu do pracy z procesami biznesowymi, który umożliwia zarządzanie nimi, projektowanie diagramów oraz wykonywanie ich. W systemie Polokus dostarczono program działający jako usługa w tle, który ma wykonywać procesy, oraz aplikację z graficznym interfejsem, stworzoną do administrowania procesami oraz tworzenia wykonywalnych diagramów \bpmnnospace. Silnik nie obsługuje pełnej specyfikacji \bpmn 2.0 zdefiniowanej przez organizację OMG, natomiast wspiera najważniejsze elementy przydatne do tworzenia nietrywialnych procesów.
+
+Główną różnicą pomiędzy pokazaną implementacją a komercyjnymi rozwiązaniami jest sposób przechowywania danych. Camunda i Kogito używają dodatkowej, zewnętrznej bazy danych do przechowywania informacji, co jak wcześniej wspomniano, ułatwia radzenie sobie z obsługiwaniem awarii, ponieważ przerzuca odpowiedzialność naprawiania awarii częściowo na wybrany silnik relacyjnej bazy danych. Niesie to za sobą jednak konieczność instalowania na maszynie dodatkowego oprogramowania. System Polokus został zaprojektowany jako aplikacja przeznaczona dla komputerów osobistych, a użytkownicy końcowi mogą używać go jako menadżera automatycznych akcji, które mają wykonywać się na przykład o wybranych godzinach albo gdy pojawi się nowy plik w pewnym monitorowanym folderze. System plików wydaje się wystarczająco dobry do przechowywania danych dla tego rodzaju programów
+
+Atutem systemu Polokus jest również ilość zajmowanej pamięci RAM. Zgodnie z jego przeznaczeniem, ma on działać w tle na komputerze osobistym, więc ważne jest, aby go zbytnio nie obciążał. Na rysunku \ref{fig:comparison} pokazano porównanie wybranych silników do przetwarzania procesów \bpmn w stanie bezczynności (ang. \textit{idle}). Dwa z nich są obciążone dodatkowo silnikiem bazy danych i przyjęto 100 MB za minimalne zużycie pamięci, żeby uzyskać wystarczającą wydajność bazy danych.
+
+\begin{figure}[H]
+    \includegraphics[width=0.55\textwidth,center]{img/Comparison.png}
+    \caption{Porównanie zużywanej pamięci RAM silników BPMN}
+    \label{fig:comparison}
+\end{figure}
+
+System Polokus pomija również częstą cechę komercyjnych silników \bpmnnospace, to znaczy autentykację i autoryzację. Nie jest to jednak istotna cecha dla tej implementacji, gdyż  jest skierowana do pojedynczych użytkowników a nie grup użytkowników, a główną istotą tej pracy jest przetwarzanie procesów.
+
+System Polokus może być w przyszłości rozwijany. W kolejnych wersjach aplikacji warto byłoby zapewnić wsparcie obsługi języków decyzji biznesowych, który wykoryzstywany jest w zadaniach \textit{Business Rule Task}. Wiele popularnych silników daje wsparcie dla połączonego z \bpmn języka DMN i wydaje się, że jest to wygodniejsze dla użytkowników niż pisanie własnych skryptów składających się z wielu instrukcji warunkowych \textit{if}. Kolejną ważną cechą mogłoby być większe oddzielenie warstwy prezentacji od warstwy wykonania. Aktualnie \textit{Script Tasks} oraz sekwencje wyjściowe z bramek, swoje warunki przechowują we właściwości ,,\textit{Name}'', a ta właściwość jest wyświetlana na diagramie - można rozwinąć system o ukrywanie prawdziwych wyrażeń, które trzeba obliczyć w jakiejś niewidocznej na diagramie właściwości, a na diagramie wyświetlać nad odpowiednią krawędzią bardzo wysokopoziomową nazwę.
+
+Język \bpmn jest szeroko używanym narzędziem w biznesie, ale może być również wykorzystywany do tworzenia prostych automatyzujących rozwiązań dla użytkowników komputerów osobistych. Wykonywanie diagramów wydaje się dość nietypowe, ale jak się okazuje może być świetnym narzędziem do budowania aplikacji coraz bardziej popularnym podejściem ,,\textit{no code / low code}''. Silniki \bpmn mogą być używane przez ludzi technicznych, menadżerów i projektantów, a również przez laików. Jednocześnie standaryzacja \bpmn i szeroki wybór silników darmowych i komercyjnych, zapewnia, że ta dziedzina nie umrze i warto sięgnąć po \bpmn do automatyzacji procesów, aby łatwo osiągnąć swoje cele.
+
+
+
+\appendix
+\setcounter{secnumdepth}{-1}
+\chapter{Dodatek}
+\section*{A: Integracja ze skrzynką GMail}
+
+System Polokus może być rozszerzany i dostosowywany do własnych potrzeb. W pracy wspominano kilka razy o możliwości monitorowania różnych zmian we wskazanych folderach. W dostarczonej implementacji został również dołączony przykład integracji z klientem poczty GMail - należy jednak pamiętać, że z uwagi na to, że jest zarejestrowany jako usługa developerska Google, to żeby z niej korzystać, należy skonfigurować ją we własnym zakresie, to znaczy podpiąć własnego klienta GMail.
+
+Na rysunku \ref{fig:mailProcess} pokazano prosty proces \bpmnnospace, który ma na celu przechwycić wiadomość e-mail i zalogować do pliku informacje o wiadomości.
+
+\begin{figure}[H]
+    \includegraphics[width=.4\textwidth,center]{img/mailProcess.jpg}
+    \caption{}
+    \label{fig:mailProcess}
+\end{figure}
+
+\textit{GmailMonitor} co 5 sekund wysyła zapytanie do API usługi GMail z odpowiednimi tokenami autoryzującymi zapisanymi w zadanej ścieżce w konfiguracji obiektu monitorującego. W razie otrzymania nowej wiadomości, odnotowuje to jako zdarzenie i wysyła sygnał \textit{NewMail}, który przechwytuje silnik. Jeśli istnieje jakiś proces ze zdarzeniem startowym typu \textit{Signal Start Event} o nazwie \textit{NewMail}, to zostanie uruchomiona nowa instancja tego procesu z argumentami wywołania zawierającymi dane nadawcy i tytuł wiadomości e-mail.
+
+\newpage
+ Aby włączyć obserwowanie skrzynki pocztowej należy zarejestrować dołączony w projekcie \textit{Polokus.ExternalsExample} obiekt monitorujący, to znaczy zarejestrować odpowiedni monitor w pliku \textit{externals.json}.
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+"Monitors": [
+  %\{%
+    "Name": "Gmail monitor",
+    "Assembly": "./Polokus.ExternalsExample.dll",
+    "ClassName": "Polokus.ExternalsExample.MailMonitoring.GmailMonitor",
+    "Arguments": [ "./Auth/credentials.json" ],
+    "Dependencies": [
+      "./Google.Apis.Gmail.v1.dll",
+      "./Google.Apis.Auth.dll",
+      "./Google.Apis.Auth.PlatformServices.dll",
+      "./Google.Apis.Core.dll",
+      "./Google.Apis.dll",
+      "./Newtonsoft.Json.dll"
+    ]
+  %\}%			
+  
+\end{lstlisting}
+\end{minipage}
+
+
+
+
+
+
+
+
+\newpage
+\section*{B: Uproszczony diagram klas}
+System Polokus składa się z kilku modułów dotyczących wykonania instancji procesów, komunikacji aplikacji i usługi, czy rozszerzalności systemu. Aby pomóc w zrozumieniu odpowiedzialności poszczególnych komponentów, na rysunku \ref{fig:uml} pokazano uproszczony diagram klas UML. Wymienione na nim komponenty to:
+\begin{itemize}
+    \item MASTER - Master jest obiektem koordynującym wszystkie inne moduły. Jest to główny zarządca całego systemu.
+    \item BPMN MODELS - obiekty reprezentujące zawartość pliku bpmn po sparsowaniu.
+    \item EXECUTION - Workflow, Process Instance i NodeHandler odpowiadają za wykonanie procesów i elementów przepływu. Obiekty Process Starter i Waiter nasłuchują na różne zdarzenia i umożliwiają odpowiednio wystartowanie i kontynuację procesu. Active Taks Manager to obiekt zarządzający wykonującymi się wierzchołkami pojedynczej instancji procesu. Status Manager to obiekt zarządzający instancją i sprawdzający jej stan - czy działa, czy jest zatrzymana, itp.
+    \item COMMUNICATION
+    \item SERIALIZATION - Jest to moduł zapewniający zapisywanie stanu procesu, aby wznowić go ponownie w razie awarii. Obiekt Snapshot to skrót informacji o instancji procesie w danej chwili.
+    \item EXTENSIBILITY - Hooks Provider jest obiektem zarządzającym zdarzeniami w pewnych istotnych chwilach podczas wykonywania procesu - można rejestrować obiekty z własną implementacją co ma się zdarzyć podczas pewnych zdarzeń. Settings Provider jest obiektem zarządzającym opcjami systemu, które można zmieniać za pomocą pliku \textit{config.ini}. Monitor to rozszerzający obiekt monitorujący i wywołujący sygnały, mający możliwość uruchamiania instancje procesów.    
+\end{itemize}
+
+\newpage
+\begin{figure}[H]
+    \includegraphics[width=1.05\textwidth,center]{img/UML.png}
+    \caption{Uproszczony diagram klas}
+    \label{fig:uml}
+\end{figure}
+ \clearpage
+
+
+%\section{Pewne użyteczne procesy \bpmn}
+
+%%%%% BIBLIOGRAFIA
+
+\begin{thebibliography}{1}
+
+\bibitem{lowcode-nocode}
+National Informatics Centre: Understanding Low-Code No-Code Platforms \\
+\texttt{https://www.nic.in/blogs/understanding-low-code-no-code-lcnc-platforms} \\
+Data dostępu: 01.02.2023
+
+\bibitem{bpm-wiki}
+Wikipedia: Business process modeling \\
+\texttt{https://en.wikipedia.org/wiki/Business\_process\_modeling} \\
+Data dostępu: 01.02.2023
+
+\bibitem{bpm-history-wiki}
+Wikipedia: Business process modeling - History \\
+\texttt{https://en.wikipedia.org/wiki/Business\_process\_modeling\#History} \\
+Data dostępu: 01.02.2023
+
+\bibitem{uml-wiki}
+Wikipedia: Unified Modeling Language \\
+\texttt{https://en.wikipedia.org/wiki/Unified\_Modeling\_Language} \\
+Data dostępu: 01.02.2023
+
+\bibitem{bpmn-new-20}
+BPMN-Guide: What is New in BPMN 2.0? \\
+\texttt{https://bpmn.gitbook.io/bpmn-guide/what-is-bpmn/what-is-new-in-bpmn-2.0} \\
+Data dostępu: 08.03.2023
+
+
+
+
+\bibitem{omg-wiki}
+Wikipedia: Object Management Group \\
+\texttt{https://en.wikipedia.org/wiki/Object\_Management\_Group} \\
+Data dostępu: 01.02.2023
+
+\bibitem{bruce-silver-bpmn-levels}
+Silver Bruce, BPMN Method and Style, 2nd Edition \\
+Cody-Cassidy Press, Altadena USA 2011, s. 33-36 \\
+Rozdział: BPMN Levels and Process Modeling Conformance Subclasses
+
+\bibitem{process-maker-bpmn}
+Larissa Lewis, ProcessMaker, 5/08/2020 \\
+\texttt{https://www.processmaker.com/blog/bpmn-diagram-and-symbols} \\
+Data dostępu: 01.02.2023
+
+\bibitem{bruce-silver-bpmn-tasks}
+Silver Bruce, BPMN Method and Style, 2nd Edition \\
+Cody-Cassidy Press, Altadena USA 2011, s. 64-66 \\
+Rozdział: The Level 1 Palette, Tasks
+
+\bibitem{visual-paradigm-tasks-explained}
+Visual Paradigm, Support, BPMN Activity Types Explained \\
+\texttt{https://www.visual-paradigm.com/guide/bpmn/bpmn-activity-types-explained} \\
+Data dostępu: 01.02.2023
+
+\bibitem{bruce-silver-bpmn-events}
+Silver Bruce, BPMN Method and Style, 2nd Edition \\
+Cody-Cassidy Press, Altadena USA 2011, s. 157-207 \\
+Rozdział: Events
+
+\bibitem{bruce-silver-bpmn-boundary-events-v2}
+Silver Bruce, BPMN Method and Style, 2nd Edition \\
+Cody-Cassidy Press, Altadena USA 2011, s. 13 \\
+Rozdział: BPMN Tools
+
+\bibitem{bruce-silver-bpmn-gateways}
+Silver Bruce, BPMN Method and Style, 2nd Edition \\
+Cody-Cassidy Press, Altadena USA 2011, s. 74 \\
+Rozdział: The Level 1 Palette, Gateway
+
+\bibitem{wiki-camunda}
+Wikipedia: Camunda \\
+\texttt{https://en.wikipedia.org/wiki/Camunda} \\
+Data dostępu: 01.02.2023
+
+\bibitem{camunda-orchestration}
+Camunda: Orchestrate Microservices \\
+\texttt{https://camunda.com/solutions/microservices-orchestration} \\
+Data dostępu: 01.02.2023
+
+\bibitem{camunda-docs-supported-db}
+Camunda Docs: Supported databases \\
+\texttt{https://docs.camunda.org/manual/7.18/introduction/supported-environments/\#databases} \\
+Data dostępu: 01.02.2023
+
+\bibitem{camunda-docs-db}
+Camunda Docs: Database Schema \\
+\texttt{https://docs.camunda.org/manual/7.18/user-guide/process-engine/database/database-schema} \\
+Data dostępu: 01.02.2023
+
+\bibitem{wiki-acid}
+Wikipedia: ACID \\
+\texttt{https://en.wikipedia.org/wiki/ACID} \\
+Data dostępu: 01.02.2023
+
+\bibitem{camunda-docs-external-tasks}
+Camunda Docs: External Tasks \\
+\texttt{https://docs.camunda.org/manual/7.18/user-guide/process-engine/external-tasks} \\
+Data dostępu: 01.02.2023
+
+\bibitem{camunda-blog-cloud}
+Daniel Mayer, Camunda Blog, 11/05/2021: \\
+Introducing Camunda Cloud -- Industry-First Process Automation as a Service \\
+\texttt{https://camunda.com/blog/2021/05/relentless-innovation-introducing-camunda-cloud-10/} \\
+Data dostępu: 01.02.2023
+
+\bibitem{wiki-cron}
+Wikipedia: Cron \\
+\texttt{https://en.wikipedia.org/wiki/Cron} \\
+Data dostępu: 01.02.2023
+
+\bibitem{wiki-grpc}
+Wikipedia: gRPC \\
+\texttt{https://en.wikipedia.org/wiki/GRPC} \\
+Data dostępu: 01.02.2023
+
+
+
+
+
+
+
+\bibitem{camunda-process-engine-architecture}
+%https://docs.camunda.org/manual/7.18/introduction/architecture/#process-engine-architecture
+
+\bibitem{camunda-docs-introduction}
+https://docs.camunda.org/manual/7.18/introduction/
+
+\bibitem{cloc}
+https://github.com/AlDanial/cloc
+
+
+\bibitem{kogito-architecture}
+Jose Carvajal: Kogito Introduction \\
+\texttt{https://sgitario.github.io/kogito-introduction} \\
+Data dostępu: 01.03.2023
+
+\bibitem{kogito-services}
+Kogito docs: Cloud first priority \\
+\texttt{https://docs.jboss.org/kogito/release/latest/html\_single/\#cloud\_first\_priority} \\
+Data dostępu: 01.03.2023
+
+\bibitem{kogito-trusty-services}
+Kogito docs: Trusty service \\
+\texttt{https://docs.jboss.org/kogito/release/latest/html\_single/\#con-trusty-service\_kogito-configuring} \\
+Data dostępu: 01.03.2023
+
+\bibitem{kogito-bpmn-support}
+Kogito docs: BPMN2 support in Kogito \\
+\texttt{https://docs.jboss.org/kogito/release/latest/html\_single/\#ref-bpmn-support\_kogito-developing-process-services} \\
+Data dostępu: 01.03.2023
+
+\bibitem{wiki-k8s}
+Wikipedia: Kubernetes \\
+\texttt{https://en.wikipedia.org/wiki/Kubernetes} \\
+Data dostępu: 01.03.2023
+
+
+
+
+
+\end{thebibliography}
+
+\end{document}
