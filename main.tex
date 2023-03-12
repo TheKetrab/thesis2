@@ -545,15 +545,76 @@ Taki podział komponentów rozwiązania, w którym pojawia się wydzielona aplik
 
 W tej części zostanie omówiona instalacja oraz użytkowanie programów dołączonych do pracy.
 
-\section{Instalacja i korzystanie z programu}
+\section{Instalacja programu}
 
 System Polokus jest przeznaczony dla komputerów z systemem operacyjnym Windows. Można go zainstalować poprzez dedykowany instalator, bądź skompilować samodzielnie ze źródeł. Instalator został przygotowany przy pomocy oprogramowania NSIS. Rozpakowuje on pliki do wskazanego folderu oraz rejestruje Polokus Service jako Windowsową usługę.
 
-\noindent Link do repozytorium: \href{https://github.com/TheKetrab/Polokus}{https://github.com/TheKetrab/Polokus}
-
 \noindent Link do instalatora: TODO
 
+Żeby zbudować samodzielnie cały system, należy upewnić się, że posiada się oprogramowanie wymagane do procesu kompilacji: dotnet (w wersji minimum 6.0, przeznaczonego na platformę .NET 6), npm, webpack. Później można pobrać kod źródłowy dostępny publicznie w serwisie Github. 
 
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+  git clone https://github.com/TheKetrab/Polokus.git
+  cd Polokus
+\end{lstlisting}
+\end{minipage}
+
+Zanim pliki zostaną poddane procesowi kompilacji, trzeba zbudować komponent aplikacji odpowiadający za wyświetlanie graficznej reprezentacji procesów. 
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+  cd Polokus.Bpmnio
+  npm install --save --legacy-peer-deps
+  npm run build
+  cd ..
+\end{lstlisting}
+\end{minipage}
+
+W końcu można uruchomić proces kompilacji, który wygeneruje aplikację oraz usługę znajdujące się w ustalonych folderach odpowiednio w ,,Polokus.App/bin'' i ,,Polokus.Service/bin''
+
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+  dotnet build Polokus.sln
+\end{lstlisting}
+\end{minipage}
+
+
+\section{Użycie silnika przetwarzania procesów}\label{subsection-use-polokus}
+
+\subsection*{Uruchomienie systemu}
+
+System Polokus można uruchomić na kilka sposobów. Najpierw należy upewnić się, czy w pliku konfiguracyjnym \textit{config.ini}, znajdującym się w tym samym folderze co Polokus.App i Polokus.Service, została podana prawidłowa ścieżka do folderu, który będzie zawierał definicje procesów (czyli pliki z rozszerzeniem bpmn). W sekcji ,,Main'' należy za pomocą opcji ,,BpmnPath'' ustawić odpowiednią lokację.
+
+Pierwszy sposób, najłatwiejszy, to włączenie aplikacji Polokus.App w trybie lokalnym, w którym silnik przetwarzania procesów jest montowany wewnątrz aplikacji, a zamknięcie okna aplikacji wyłącza również działający silnik. Jest to tryb dostępny domyślnie po zainstalowaniu lub skompilowaniu ze źródeł.
+
+Drugim sposobem jest włączenie silnika jako osobny program, działający jako serwer nasłuchujący na polecenia oraz wykonujący procesy zgodnie z harmonogramem. Włączenie Polokus.Service uruchomi silnik w konsoli będący serwerem nasłuchującym na wybranym w konfiguracji porcie (domyślnie 3000) na żądania w protokole gRPC\footnote{gRPC (\textit{gRPC Remote Procedure Calls}) - technologia do zdalnego wywoływania procedur stworzona przez Google i opublikowana jako otwartoźródłowa w 2015. roku. Wykorzystuje protokół HTTP/2 do transportu danych, które są kodowane w plikach Protocol Buffers (protobuf) \cite{wiki-grpc}.}. Aby nadzorować wykonywane tam procesy z poziomu aplikacji, należy w pliku konfiguracyjnym, w sekcji ,,App'' ustawić, aby aplikacja łączyła się do serwera (używany jest port 3000) za pomocą następujących opcji:
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+  [App]
+  UseRemotePolokus = True
+  RemotePolokusUri = http://localhost:3000
+\end{lstlisting}
+\end{minipage}
+
+Oczywiście, wyłączenie konsolowego programu Polokus.Service, wyłączy silnik i zatrzyma działające procesy. Aby temu zapobiec, należy skorzystać z trzeciego sposobu, czyli zarejestrować program Polokus.Service jako Windowsową usługę. Aby to zrobić, należy w konsoli uruchomić polecenie:
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+Polokus.Service.exe install start
+\end{lstlisting}
+\end{minipage}
+
+\noindent Ta komenda zarejestruje silnik w tle, który będzie nasłuchiwał na polecenia na porcie 3000 oraz będzie wykonywał procesy zdefiniowane w folderze podanym w konfiguracji. Będzie można wtedy również podłączyć się za pomocą aplikacji Polokus.App, aby nadzorować wykonywanie procesów.
+
+\subsection*{Korzystanie z aplikacji}
 
 Aplikacja składa się z okna głównego i menu wyboru aktywnego widoku. Różne widoki dotyczą różnych istotnych cech programu. Najważniejszy widok to ,,Services'', który zawiera informacje o procesach przetwarzanych przez system. Pokazany jest na nim tak zwany ,,Workflow'', który jest zbiorem współpracujących procesów, a opisany w zadanym pliku XML z rozszerzeniem ,,bpmn''.
 
@@ -585,24 +646,83 @@ Na rysunku \ref{fig:polokus-app} przedstawiono wygląd aplikacji. Widoczne na ni
     \item[14.] Panel z dodatkowymi opcjami przeznaczonymi do sterowania procesami.
 \end{enumerate}
 
-Aplikacja może działać w dwóch trybach: lokalnie albo zdalnie. ,,Lokalnie'' oznacza, że usługa uruchamiana jest 
-razem z aplikacją i oba komponenty działają w pamięci operacyjnej a po zamknięciu okna aplikacji, przestaje działać. ,,Zdalnie'' oznacza, że usługa działa zewnątrzprocesowo, a aplikacja się do niej łączy, aby nią zarządzać i oglądać stan przetwarzanych przez nią procesów. Zdalna usługa może działać na tej samej maszynie (wtedy używany jest na przykład \textit{localhost}), albo na osobnej. Ustalenie trybu działania odbywa się podczas startu aplikacji i jest konfigurowalne w pliku \emph{config.ini} przy pomocy opcji \textit{UseRemotePolokus} oraz \textit{RemotePolokusUri}.
+\subsection*{Tworzenie procesu}
 
-Jak wcześniej wspomniano, \textit{Workflow} to obiekt odpowiadający pojedynczemu plikowi bpmn. Obiekty te są odczytywane z konkretnego folderu wskazanego w pliku konfiguracyjnym przy starcie aplikacji. Od momentu kiedy proces jest zamieniony z pliku bpmn na \textit{Workflow}, jest od razu aktywny, to znaczy może zostać uruchomiony automatycznie przez jakieś zdarzenie (czasowe, wiadomość, sygnał). Można uruchamiać kilka instancji pojedynczego procesu.
+Jak wcześniej wspomniano, \textit{Workflow} to obiekt odpowiadający pojedynczemu plikowi bpmn. Obiekty te są odczytywane z konkretnego folderu wskazanego w pliku konfiguracyjnym przy starcie aplikacji. Od kiedy proces jest zamieniony z pliku bpmn na \textit{Workflow}, jest od razu aktywny, to znaczy może zostać uruchomiony automatycznie przez jakieś zdarzenie (czasowe, wiadomość, sygnał). Można uruchamiać kilka instancji pojedynczego procesu.
 
-Zachowanie obiektów czasowych definiowane jest przy użyciu ustandaryzowanych napisów w dwóch typach. Pierwsze to wyrażenia czasowe, to znaczy ,,5h 10m'' czy ,,17s 42ms'' oznaczają ,,zaczekaj 5 godzin i 10 minut'', ,,zaczekaj 17 sekund i 42 milisekundy'' zanim zaczniesz dalej wykonywać. Drugie to wyrażenia tekstowe
-zgodne z formatem cron\footnote{\textit{Cron} - narzędzie w systemach z rodziny Unix stworzone do harmonogramowania zadań zgodnie z określonym interwałem. Najbardziej podstawowy format zapisu czasu to pięć kolejnych liczb oznaczających kolejno minutę, godzinę, dzień miesiąca, miesiąc i dzień tygodnia, gdzie gwiazdka oznacza dowolność \cite{wiki-cron}. Przykładowo ,,15 8 * * 1'' oznacza ,,w każdy poniedziałek o 8:15''.}. Polokus korzysta z biblioteki Quartz.NET i interpretuje wyrażenia zgodnie z jej standardem.
+Aby pokazać, jak powinien być stworzony proces, zostaną omówione poszczególne kroki tworzenia prostego procesu, który ma na celu co minutę tworzyć pusty plik zawierający losową liczbę. Najpierw należy otworzyć widok ,,Editor'' i utworzyć proces wyglądający jak ten, który przedstawiono na rysunku \ref{fig:polokus-random-number}. Proces należy zapisać do pliku bpmn za pomocą przycisku ,,BPMN diagram'', a następnie wkleić do folderu wybranego w pliku konfiguracyjnym jako miejsce z definicjami procesów.
+
+\begin{figure}[H]
+    \includegraphics[width=0.7\textwidth,center]{img/RandFileGenerate.png}
+    \caption{Proces generujący plik z liczbą}
+    \label{fig:polokus-random-number}
+\end{figure}
+
+Używane w tym procesie elementy to zdarzenia startowe manualne i czasowe, zadania skryptowe, \textit{Service Task} i zdarzenie końcowe. Gdy ten proces zostanie załadowany do silnika, będzie uruchamiany co minutę zgodnie semantyką ciągu znaków ,,0 0/1 * * * ?''. Drugie zdarzenie startowe umożliwi ręczne uruchamianie procesu.
+
+Zachowanie obiektów czasowych definiowane jest przy użyciu ustandaryzowanych napisów w dwóch typach. Pierwsze to wyrażenia czasowe, to znaczy ,,5h 10m'' czy ,,17s 42ms'' oznaczające odpowiednio ,,zaczekaj 5 godzin i 10 minut'' oraz ,,zaczekaj 17 sekund i 42 milisekundy'' zanim zaczniesz dalej wykonywać. Drugie to wyrażenia cron\footnote{\textit{Cron} - narzędzie w systemach z rodziny Unix stworzone do harmonogramowania zadań zgodnie z określonym interwałem. Najbardziej podstawowy format zapisu czasu to pięć kolejnych liczb oznaczających kolejno minutę, godzinę, dzień miesiąca, miesiąc i dzień tygodnia, gdzie gwiazdka oznacza dowolność \cite{wiki-cron}. Przykładowo ,,15 8 * * 1'' oznacza ,,w każdy poniedziałek o 8:15''.}. Polokus korzysta z biblioteki Quartz.NET i interpretuje wyrażenia zgodnie z jej standardem.
+
+Pierwsze zadanie dla tego procesu to wykonanie prostego skryptu przypisującego do zmiennej globalnej \$mode odpowiednią wartość, aby później móc z niej skorzystać i sprawdzić, czy dana instancja procesu została uruchomiona automatycznie czy ręcznie. Drugie zadanie ma na celu wygenerować plik. Do poprawnego działania należy zdefiniować własną semantykę dla tego zadania i powiązać ją z nazwą ,,Generate File''.
+
+Aby to zrobić należy utworzyć publiczną klasę dziedziczącą z klasy \textit{ServiceTaskNodeHandlerImpl}, która udostępnia informacje o instancji procesu - między innymi strukturę węzłów procesu oraz słownik zmiennych globalnych ,,Variables'', a następnie zaimplementować metodę ,,Run'', która będzie wykonana, gdy instancja procesu dojdzie do tego miejsca, a po jej zakończeniu przepływ będzie kontynuowany. Przykładowa implementacja usługi generującej pliki może wyglądać następująco:
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+  public class GenerateFile : ServiceTaskNodeHandlerImpl
+  %\{%
+    static int cnt = 0;
+
+    public GenerateFile(INodeHandler parent)
+      : base(parent) %\{ \}%
+
+    public override Task Run()
+    %\{%
+      using (var fs = File.Create($"./file%\{%++cnt%\}%.txt"))
+      using (var sw = new StreamWriter(fs))
+      %\{%
+        string mode = Variables.GetValue%$<$%string%$>$%("mode");
+        if (mode == "auto")
+          sw.WriteLine(Random.Shared.Next(100));
+        else if (mode == "user")
+          sw.WriteLine(Random.Shared.Next(100, 1000));
+      %\}%
+      return Task.CompletedTask;
+    %\}%
+  %\}%
+\end{lstlisting}
+\end{minipage}
+
+Po skompilowaniu klasy i utworzeniu pliku DLL, należy powiązać nazwę \textit{Service Taska} z własną implementacją. Rejestracja klas i wiązanie odbywa się podczas startu silnika (należy więc zrestartować program) na podstawie informacji zawartych w pliku JSON - ta opcja jest dostępna w sekcji ,,Service'' pod nazwą ,,ExternalsPath''. Wiązanie zadania w omawianym przykładzie wyglądałoby następująco:
+
+\begin{minipage}[c]{\textwidth}
+\centering
+\begin{lstlisting}
+  %\{%
+    "ServiceTasks": [%\{%
+      "Assembly": "[PATH]/[ASSEMBLY].dll",
+      "ClassName": "[NAMESPACE].GenerateFile",
+      "ServiceTaskName": "Generate File"
+    %\}%]
+  %\}%
+\end{lstlisting}
+\end{minipage}
+
+\noindent Podawana jest ścieżka do pliku DLL, pełna nazwa klasy oraz nazwa \textit{Service Taska}, z którą ma być wiązana klasa przez silnik.
+
+Dzięki tym kilku krokom został stworzony proces tworzący pliki co minutę z możliwością stworzenia pliku uruchamiając kolejną instancję procesu ręcznie za pomocą aplikacji GUI. Więcej przykładów z użyciem różnych konstrukcji standardu \bpmn jest dostarczone wraz z systemem - zarówno podczas kompilacji ze źródeł, jak i podczas procesu instalacji.
+
 
 \section{Informacje o programie}
 
-Program został napisany w technologii .NET 6 przy użyciu języka C\#. Zostały w nim użyte następujące zewnętrzne biblioteki: CefSharp, Google.Protobuf, Grpc, Quartz, ini-parser, Google.Apis.Gmail, Topshelf. W skład rozwiązania wchodzi sześć projektów:
+Program został napisany w technologii .NET 6 przy użyciu języka C\#. Zostały w nim użyte następujące zewnętrzne biblioteki: CefSharp, Google.Protobuf, Grpc, Quartz, ini-parser, Google.Apis.Gmail, Topshelf, Jint. W skład rozwiązania wchodzi sześć projektów:
 
 \begin{itemize}
     \item Polokus.App - Aplikacja GUI w technologii Windows Forms
     \item Polokus.Core - Biblioteka z implementacją poszczególnych komponentów i logiką działania silnika przetwarzania procesów.
     \item Polokus.Core.Interfaces - Biblioteka z interfejsami używanymi w całym systemie. Zawiera wysokopoziomowy opis wszystkiego co może być przydatne do rozszerzania systemu.
     \item Polokus.ExternalsExample - Biblioteka demonstrująca rozszerzanie silnika systemu o własne akcje. Znajdują się tam między innymi przykłady klienta monitorującego wskazany folder i klienta monitorującego skrzynkę mailową GMail.
-    \item Polokus.Service - Program konsolowy działający w trybie serwera, który zawiera silnik przetwarzania procesów \bpmn i umożliwia zdalne sterowanie nim za pomocą technologii gRPC\footnote{gRPC (\textit{gRPC Remote Procedure Calls}) - technologia do zdalnego wywoływania procedur stworzona przez Google i opublikowana jako otwartoźródłowa w 2015. roku. Wykorzystuje protokół HTTP/2 do transportu danych, które są kodowane w plikach Protocol Buffers (protobuf) \cite{wiki-grpc}.}.
+    \item Polokus.Service - Program konsolowy działający w trybie serwera, który zawiera silnik przetwarzania procesów \bpmn i umożliwia zdalne sterowanie nim za pomocą technologii gRPC.
     \item Polokus.Tests - Zestaw testów jednostkowych.
 \end{itemize}
 
@@ -656,8 +776,6 @@ Następnie dla każdego procesu, dla każdej z sekwencji (bpmn:sequenceFlow), cz
 Cały \textit{Workflow} może mieć wiele procesów, a każdy z nich może mieć podprocesy (ang. \textit{subprocess}). Są one parsowane rekurencyjnie, rozpoczynając od wierzchołków \textit{bpmn:process} lub \textit{bpmn:subprocess} i wszystkich ich dzieci. Parser dba również o ustanowienie połączeń linii wiadomości pomiędzy odpowiednimi wierzchołkami lub procesami, które są zdefiniowane w węźle \textit{bpmn:collaboration}.
 
 Należy zwrócić uwagę na to że standard przewiduje utrwalanie definicji procesów w formacie opartym na XML, a to ułatwia parsowanie o tyle, że sam parser XML jest częścią biblioteki standardowej. Polokus podczas parsowania może się więc skupić na interpretowaniu węzłów XML w określony sposób, nie musi dodatkowo rozwiązywać żmudnych zagadnień podziału elementów tekstowych na tokeny, ani też nie potrzebuje gramatyki języka. 
-
-\newpage
 
 \section{Obsługa elementów przepływu}
 Wykonywanie procesu to w uproszczeniu - przechodzenie po grafie. Wierzchołki mają różne typy, a więc wykonanie ich różni się od siebie. Wykonanie każdego wierzchołka będziemy oddelegowywać do osobnego obiektu: \textit{NodeHandler}. W systemie Polokus, dla każdego wierzchołka zdefiniowany został konkretny \textit{NodeHandler} wykonujący go. Wykonanie wierzchołka to wykonanie pewnej akcji oraz ustalenie jednej lub kilku dalszych sekwencji wyjściowych (czyli tych, którymi ma kontynuować proces) zgodnie z semantyką dla danego typu wierzchołka. 
@@ -759,20 +877,7 @@ Bardzo ważną cechą silnika \bpmn jest dostosowywanie go do własnych potrzeb.
 
 Zdefiniowanie własnego \textit{Service Task} odbywa się poprzez implementację własnej klasy dziedziczącej po klasie abstrakcyjnej \textit{ServiceTaskNodeHandlerImpl}, a następnie podpięcie odpowiedniej nazwy \textit{Service Task} do zdefiniowanej klasy. Dziedzicząc po klasie \textit{ServiceTaskNodeHandlerImpl} ma się dostęp do obiektu \textit{Parent}, który jest \textit{NodeHandlerem}, a więc ma się dostęp do wszystkich przydatnych informacji o procesie (np. dane instancji procesu, czy \textit{Workflow}) oraz można wykonywać udostępniane przez interfejs \textit{INodeHandler} metody, jak chociażby przerwanie wykonywania procesu.
 
-Rejestracja własnej klasy do systemu odbywa się za pomocą pliku externals.json. Należy podać ścieżkę do pliku DLL, który będzie załadowany, pełną ścieżkę klasy oraz nazwę \textit{Service Task} - będzie to napis, taki że jeśli się pojawi w diagramie procesu na obiekcie \textit{Service Task}, to zostanie wywołana pod spodem metoda \textit{Run} zdefiniowanej klasy \textit{ClassName}. Przykładowy rejestrator wygląda w następujący sposób:
-
-\begin{minipage}[c]{\textwidth}
-\centering
-\begin{lstlisting}
-  "ServiceTasks": [
-    %\{%
-      "Assembly": "path_to_assembly/assembly.dll",
-      "ClassName": "FullClassPath.MyCustomService",
-      "ServiceTaskName": "MyCustomServiceTaskNodeHandler"
-    %\}%
-  ]
-\end{lstlisting}
-\end{minipage}
+Rejestracja własnej klasy do systemu odbywa się za pomocą pliku externals.json. Należy podać ścieżkę do pliku DLL, który będzie załadowany, pełną ścieżkę klasy oraz nazwę \textit{Service Task} - będzie to napis, taki że jeśli się pojawi w diagramie procesu na obiekcie \textit{Service Task}, to zostanie wywołana pod spodem metoda \textit{Run} zdefiniowanej klasy \textit{ClassName}. Przykład rejestrowania własnego serwisu został pokazany w sekcji \ref{subsection-use-polokus}
 
 Rozszerzanie systemu o własne startery zostało wykonane przy użyciu zdefiniowanych w \bpmn zdarzeniach typu \textit{Signal}. Semantycznie sygnały oznaczają, że coś się stało i należy wykonać pewną akcję. Polokus może dynamicznie zarejestrować obiekty implementujące interfejs \textit{IMonitor}. \textit{Monitor} to w zamyśle obiekt, który działa cały czas w tle i monitoruje, czy coś się stało - jeśli tak, to za pomocą dostępu do obiektu \textit{PolokusMaster} może wywołać sygnał, który silnik przechwyci i podejmie odpowiednie akcje. Rejestracja własnego obiektu monitorującego wygląda bardzo podobnie do rejestrowania \textit{Service Task}, to znaczy podaje się ścieżkę do \textit{assembly} oraz pełną nazwę klasy:
 
@@ -781,19 +886,19 @@ Rozszerzanie systemu o własne startery zostało wykonane przy użyciu zdefiniow
 \begin{lstlisting}
   "Monitors": [
     %\{%
-      "Assembly": "path_to_assembly/assembly.dll",
-      "ClassName": "FullClassPath.MyMonitor",
+      "Assembly": "[PATH]/[ASSEMBLY].dll",
+      "ClassName": "[NAMESPACE].MyMonitor",
       "Arguments": [ "arg1", "arg2" ]
     %\}%
   ]
 \end{lstlisting}
 \end{minipage}
 
- Istotnym parametrem jest ,,\textit{Arguments}'' - podczas dynamicznego rejestrowania obiektów monitorujących stosowana jest konwencja, że pierwszym argumentem konstruktora musi być instancja \textit{IPolokusMaster} (obiektu do którego rejestrowany jest monitor), a kolejne to argumenty typu \textit{string}. Obiekt \textit{Monitor} ma wtedy dostęp do silnika, a więc może wysyłać sygnały, które będą startować procesy albo zarządzać nimi, jeśli będzie nasłuchiwał jakiś \textit{Waiter}. Użyteczne przykłady zostały dołączone w kodzie w przykładach: obiekt monitorujący strukturę folderów i pliku we wskazanym folderze oraz obiekt monitorujący skrzynkę pocztową GMail i emitujący sygnały gdy pojawia się wiadomość w skrzyce.
+ Istotnym parametrem jest ,,\textit{Arguments}'' - podczas dynamicznego rejestrowania obiektów monitorujących stosowana jest konwencja, że pierwszym argumentem konstruktora musi być instancja \textit{IPolokusMaster} (obiektu do którego rejestrowany jest monitor), a kolejne to argumenty typu \textit{string}. Obiekt \textit{Monitor} ma wtedy dostęp do silnika, a więc może wysyłać sygnały, które będą startować procesy albo zarządzać nimi, jeśli będzie nasłuchiwał jakiś \textit{Waiter}. Użyteczne przykłady zostały dołączone w kodzie w przykładach: obiekt monitorujący strukturę folderów i pliku we wskazanym folderze oraz obiekt monitorujący skrzynkę pocztową GMail i emitujący sygnały gdy pojawia się wiadomość w skrzynce.
 
 % ===== ===== CHAPTER 6 ===== =====
 \chapter{Testy}\label{chapter-tests}
-Tak złożony system jak Polokus musi być wyczerpująco przetestowany. Mowa nie tylko testach sematycznych, potwierdzających zgodność ze standardem, ale też o testach wydajnościowych.
+Tak złożony system jak Polokus musi być wyczerpująco przetestowany. Mowa nie tylko testach semantycznych, potwierdzających zgodność ze standardem, ale też o testach wydajnościowych.
 
 \section{Testy jednostkowe i integracyjne}
 Każdy typ obiektu przepływu ma zdefiniowaną semantykę. Aby upewnić się, że silnik zachowuje się podczas ich wykonania zgodnie ze standardem, zostały dostarczone odpowiednie testy jednostkowe sprawdzające poprawność wykonania pojedynczych obiektów \textit{NodeHandler}. Z uwagi na to, że przetestowanie poprawnego wykonania procesu nie jest trywialne, sposób testowania zasługuje na słowo komentarza.
@@ -952,11 +1057,13 @@ Główną różnicą pomiędzy pokazaną implementacją a komercyjnymi rozwiąza
 
 Atutem systemu Polokus jest również ilość zajmowanej pamięci RAM. Zgodnie z jego przeznaczeniem, ma on działać w tle na komputerze osobistym, więc ważne jest, aby go zbytnio nie obciążał. Na rysunku \ref{fig:comparison} pokazano porównanie wybranych silników do przetwarzania procesów \bpmn w stanie bezczynności (ang. \textit{idle}). Dwa z nich są obciążone dodatkowo silnikiem bazy danych i przyjęto 100 MB za minimalne zużycie pamięci, żeby uzyskać wystarczającą wydajność bazy danych (w rzeczywistości jest to dużo więcej).
 
+\setlength{\belowcaptionskip}{-10pt}
 \begin{figure}[H]
     \includegraphics[width=0.55\textwidth,center]{img/Comparison.png}
     \caption{Porównanie zużywanej pamięci RAM silników BPMN}
     \label{fig:comparison}
 \end{figure}
+\setlength{\belowcaptionskip}{0pt}
 
 System Polokus pomija z kolei ważną cechę silników \bpmnnospace, to znaczy autentykację i autoryzację. Nie było to przedmiotem rozważań i wydaje się jednym z możliwych kierunków rozwoju.
 
@@ -964,9 +1071,10 @@ W kolejnych wersjach aplikacji warto byłoby również zapewnić wsparcie obsłu
 
 Kolejną ważną cechą mogłoby być większe oddzielenie warstwy prezentacji od warstwy wykonania. Aktualnie \textit{Script Tasks} oraz sekwencje wyjściowe z bramek, swoje warunki przechowują we właściwości ,,\textit{Name}'', a ta właściwość jest wyświetlana na diagramie - można rozwinąć system o ukrywanie prawdziwych wyrażeń, które trzeba obliczyć w jakiejś niewidocznej na diagramie właściwości, a na diagramie wyświetlać nad odpowiednią krawędzią bardzo wysokopoziomową nazwę.
 
-Interesujących rozszerzeń systemu jest więc więcej i są to m.in.
-
+Interesujących rozszerzeń systemu jest więc więcej i są to m.in.:
+\vspace{-4mm}
 \begin{itemize}
+\setlength\itemsep{-0.4em}
 \item podniesienie zgodności z elementami \bpmn
 \item dodanie obsługi magazynu innego typu niż plikowy
 \item uwzględnienie mechanizmów autentykacji i autoryzacji
@@ -1123,6 +1231,16 @@ Wikipedia: Camunda \\
 \texttt{https://en.wikipedia.org/wiki/Camunda} \\
 Data dostępu: 01.02.2023
 
+\bibitem{camunda-process-engine-architecture}
+Camunda Docs: Process Engine Architecture \\
+\texttt{https://docs.camunda.org/manual/7.18/introduction/architecture/\#process-engine-architecture} \\
+Data dostępu: 01.02.2023
+
+\bibitem{camunda-docs-introduction}
+Camunda Docs: Introduction \\
+\texttt{https://docs.camunda.org/manual/7.18/introduction/} \\
+Data dostępu: 01.02.2023
+
 \bibitem{camunda-orchestration}
 Camunda: Orchestrate Microservices \\
 \texttt{https://camunda.com/solutions/microservices-orchestration} \\
@@ -1165,20 +1283,9 @@ Wikipedia: gRPC \\
 Data dostępu: 01.02.2023
 
 
-
-
-
-
-
-\bibitem{camunda-process-engine-architecture}
-%https://docs.camunda.org/manual/7.18/introduction/architecture/#process-engine-architecture
-
-\bibitem{camunda-docs-introduction}
-https://docs.camunda.org/manual/7.18/introduction/
-
 \bibitem{cloc}
-https://github.com/AlDanial/cloc
-
+Program cloc: \\
+\texttt{https://github.com/AlDanial/cloc}
 
 \bibitem{kogito-architecture}
 Jose Carvajal: Kogito Introduction \\
